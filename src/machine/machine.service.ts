@@ -26,15 +26,16 @@ export class MachineService {
     const mashineData = await this.getMachineBalance(
       createMachineDto.machineId,
     );
-    console.log(mashineData, '/////');
     createMachineDto.machineInfo = mashineData;
     // 如果不存在，创建新记录
     const createdMachine = new this.MachineModel(createMachineDto);
+    console.log(createdMachine, 'PPPPP');
     return createdMachine.save();
   }
 
   async findAll(address): Promise<any> {
-    const rs = await this.MachineModel.find(address);
+    console.log(address, '****************************');
+    const rs = await this.MachineModel.find({ address });
     console.log(rs, '////');
 
     return {
@@ -54,8 +55,21 @@ export class MachineService {
     }).exec();
   }
 
+  // 解除质押删除机器
   async remove(machineId: string): Promise<any> {
-    return this.MachineModel.findByIdAndDelete(machineId).exec();
+    const rs = await this.MachineModel.deleteOne({ machineId });
+    console.log(rs, '解除质押删除机器');
+    if (rs.acknowledged) {
+      return {
+        msg: '删除成功',
+        code: 200,
+      };
+    } else {
+      return {
+        msg: '删除失败',
+        code: 1001,
+      };
+    }
   }
 
   // 删除所有数据

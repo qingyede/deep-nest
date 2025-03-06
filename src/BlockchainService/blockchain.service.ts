@@ -15,7 +15,7 @@ export class BlockchainService {
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
     // 初始化质押合约
-    const contractAddress = '0x23ba922d2c435ea65aceb6d56feec7a7c29948b8';
+    const contractAddress = '0x7FDC6ed8387f3184De77E0cF6D6f3B361F906C21';
     this.contract = new ethers.Contract(
       contractAddress,
       stakingContractAbi,
@@ -27,6 +27,7 @@ export class BlockchainService {
   async getMachineInfoForDBCScan(machineId: string): Promise<any> {
     try {
       const result = await this.contract.getMachineInfoForDBCScan(machineId);
+
       return {
         isStaking: result.isStaking,
         gpuType: result.gpuType,

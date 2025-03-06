@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { MachineService } from './machine.service';
 
@@ -19,7 +20,7 @@ export class MachineController {
   }
 
   @Get()
-  findAll(@Param('address') address: string) {
+  findAll(@Query('address') address: string) {
     return this.machineService.findAll(address);
   }
 
@@ -33,8 +34,9 @@ export class MachineController {
     return this.machineService.update(id, updateMachineDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
+  @Delete('unStake')
+  remove(@Query('id') id: string) {
+    console.log(id, 'KKKKKKKKKKK');
     return this.machineService.remove(id);
   }
   // 删除所有数据
@@ -45,7 +47,6 @@ export class MachineController {
 
   @Get('userMashine/:mashineId')
   async getBalance(@Param('mashineId') address: string) {
-    console.log(address, '/////');
     return this.machineService.getMachineBalance(address);
   }
 }
