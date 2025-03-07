@@ -8,18 +8,28 @@ import * as stakingContractAbi from './abi/stakingContractAbi.json'; // 加载 A
 export class BlockchainService {
   private provider: ethers.JsonRpcProvider;
   private contract: ethers.Contract;
+  private signer: ethers.Wallet;
 
   constructor(private configService: ConfigService) {
     const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
-
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
-    // 初始化质押合约
+    // 读取私钥（建议从环境变量中获取）
+    const privateKey =
+      '4edcc831171df477093ae0f34b3141bbab9b6ac76bd95776793ef5129a3b266a';
+    if (!privateKey) {
+      throw new Error('Private key is missing in environment variables');
+    }
+
+    // 使用私钥创建 signer
+    this.signer = new ethers.Wallet(privateKey, this.provider);
+
+    // 连接合约，使用 signer 进行交易
     const contractAddress = '0x7FDC6ed8387f3184De77E0cF6D6f3B361F906C21';
     this.contract = new ethers.Contract(
       contractAddress,
       stakingContractAbi,
-      this.provider,
+      this.signer, // 使用 signer 进行写操作
     );
   }
 
@@ -40,6 +50,37 @@ export class BlockchainService {
       };
     } catch (error) {
       throw new Error(`Failed to fetch machine info: ${error.message}`);
+    }
+  }
+
+  // 领取奖励
+  async claimReward(machineId: string): Promise<any> {
+    try {
+      console.log(`Claiming reward for machineId: ${machineId}`);
+
+      // 发送交易
+      const tx = await this.contract.claim(machineId);
+      console.log(`交易发送成功，交易哈希: ${tx.hash}`);
+
+      // 等待交易确认
+      const receipt = await tx.wait();
+      console.log(
+        `交易确认完成，区块号: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+      );
+
+      // 检查交易状态
+      if (receipt.status === 1) {
+        return {
+          success: true,
+          transactionHash: tx.hash,
+          blockNumber: receipt.blockNumber,
+        };
+      } else {
+        throw new Error('交易失败，可能是因为合约逻辑回滚');
+      }
+    } catch (error) {
+      console.error('失败:', error);
+      throw new Error(`Claim reward failed: ${error.message}`);
     }
   }
 }

@@ -24,16 +24,6 @@ export class MachineController {
     return this.machineService.findAll(address);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.machineService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMachineDto) {
-    return this.machineService.update(id, updateMachineDto);
-  }
-
   @Delete('unStake')
   remove(@Query('id') id: string) {
     console.log(id, 'KKKKKKKKKKK');
@@ -48,5 +38,22 @@ export class MachineController {
   @Get('userMashine/:mashineId')
   async getBalance(@Param('mashineId') address: string) {
     return this.machineService.getMachineBalance(address);
+  }
+
+  // 领取奖励
+  @Get('getReward')
+  async reward(@Query('mashineId') machineId: string) {
+    console.log(machineId);
+    return this.machineService.reward(machineId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.machineService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateMachineDto) {
+    return this.machineService.update(id, updateMachineDto);
   }
 }
