@@ -155,4 +155,9 @@ export class MachineService {
   async reward(machineId: string): Promise<any> {
     return this.blockchainService.claimReward(machineId);
   }
+
+  // 获得质押时间
+  async getPledgeTime(machineId: string): Promise<any> {
+    return this.blockchainService.getMachineTime(machineId);
+  }
 }

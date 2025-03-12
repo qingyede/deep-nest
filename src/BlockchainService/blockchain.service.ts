@@ -83,4 +83,15 @@ export class BlockchainService {
       throw new Error(`Claim reward failed: ${error.message}`);
     }
   }
+
+  // 获取质押时间
+  async getMachineTime(machineId: string): Promise<any> {
+    try {
+      const result = await this.contract.getStakeEndTimestamp(machineId);
+      // 返回状态和时间戳（仍使用 BigInt 类型）
+      return { ended: result === 0n, timestamp: result.toString(), code: 200 };
+    } catch (error) {
+      throw new Error(`Failed to fetch machine info: ${error.message}`);
+    }
+  }
 }

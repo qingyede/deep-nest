@@ -47,6 +47,13 @@ export class MachineController {
     return this.machineService.reward(machineId);
   }
 
+  // 获取质押时间并根据时间自动解除质押
+  @Get('getMachineTime')
+  async getMachineTime(@Query('mashineId') machineId: string) {
+    console.log(machineId);
+    return this.machineService.getPledgeTime(machineId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.machineService.findOne(id);
