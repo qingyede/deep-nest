@@ -31,8 +31,12 @@ export class MachineService {
     console.log(createMachineDto, '存到数据库的数据');
 
     // 如果不存在，创建新记录
-    const createdMachine = new this.MachineModel(createMachineDto);
-    return createdMachine.save();
+    const createdMachine = await new this.MachineModel(createMachineDto);
+    createdMachine.save();
+
+    return {
+      code: 1000,
+    };
   }
 
   // async findAll(address: string): Promise<any> {
