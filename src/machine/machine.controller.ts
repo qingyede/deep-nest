@@ -47,11 +47,11 @@ export class MachineController {
   }
 
   // 获取质押时间并根据时间自动解除质押
-  @Get('getMachineTime')
-  async getMachineTime(@Query('mashineId') machineId: string) {
-    console.log(machineId);
-    return this.machineService.getPledgeTime(machineId);
-  }
+  // @Get('getMachineTime')
+  // async getMachineTime(@Query('mashineId') machineId: string) {
+  //   console.log(machineId);
+  //   return this.machineService.getPledgeTime(machineId);
+  // }
 
   // @Get(':id')
   // findOne(@Param('id') id: string) {

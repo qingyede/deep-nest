@@ -85,15 +85,15 @@ export class BlockchainService {
   }
 
   // 获取质押时间
-  async getMachineTime(machineId: string): Promise<any> {
-    try {
-      const result = await this.contract.getStakeEndTimestamp(machineId);
-      // 返回状态和时间戳（仍使用 BigInt 类型）
-      return { ended: result === 0n, timestamp: result.toString(), code: 200 };
-    } catch (error) {
-      throw new Error(`Failed to fetch machine info: ${error.message}`);
-    }
-  }
+  // async getMachineTime(machineId: string): Promise<any> {
+  //   try {
+  //     const result = await this.contract.getStakeEndTimestamp(machineId);
+  //     // 返回状态和时间戳（仍使用 BigInt 类型）
+  //     return { ended: result === 0n, timestamp: result.toString(), code: 200 };
+  //   } catch (error) {
+  //     throw new Error(`Failed to fetch machine info: ${error.message}`);
+  //   }
+  // }
 
   // 质押 NFT
   // 质押 NFT

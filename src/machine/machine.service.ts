@@ -142,7 +142,7 @@ export class MachineService {
   }
 
   // 获得质押时间
-  async getPledgeTime(machineId: string): Promise<any> {
-    return this.blockchainService.getMachineTime(machineId);
-  }
+  // async getPledgeTime(machineId: string): Promise<any> {
+  //   return this.blockchainService.getMachineTime(machineId);
+  // }
 }
