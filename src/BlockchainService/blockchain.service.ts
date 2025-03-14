@@ -37,7 +37,7 @@ export class BlockchainService {
   async getMachineInfoForDBCScan(machineId: string): Promise<any> {
     try {
       const result = await this.contract.getMachineInfoForDBCScan(machineId);
-
+      console.log(1);
       return {
         isStaking: result.isStaking,
         gpuType: result.gpuType,
@@ -92,6 +92,55 @@ export class BlockchainService {
       return { ended: result === 0n, timestamp: result.toString(), code: 200 };
     } catch (error) {
       throw new Error(`Failed to fetch machine info: ${error.message}`);
+    }
+  }
+
+  // 质押 NFT
+  // 质押 NFT
+  async stake(createMachineDto): Promise<any> {
+    try {
+      console.log(createMachineDto);
+
+      // 发送 stake 交易
+      const tx = await this.contract.stake(
+        createMachineDto.address,
+        createMachineDto.machineId,
+        createMachineDto.nftTokenIds.map((id: string) => BigInt(id)),
+        createMachineDto.nftTokenIdBalances.map((balance: string) =>
+          BigInt(balance),
+        ),
+        createMachineDto.rentId,
+      );
+
+      console.log(`质押交易已发送，交易哈希: ${tx.hash}`);
+
+      // 等待交易确认
+      const receipt = await tx.wait();
+      console.log(
+        `交易已确认，区块号xx: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+      );
+
+      // 检查交易状态
+      if (receipt.status === 1) {
+        return {
+          code: 1000,
+          success: true,
+          transactionHash: tx.hash,
+          blockNumber: receipt.blockNumber,
+          msg: 'NFT质押成功',
+        };
+      } else {
+        return {
+          code: 1001,
+          msg: '交易失败，可能是合约逻辑回滚',
+        };
+      }
+    } catch (error) {
+      return {
+        code: 1001,
+        success: false,
+        msg: error.message,
+      };
     }
   }
 }

@@ -21,61 +21,36 @@ export class MachineService {
         msg: 'Machine already exists',
         code: 1001,
       };
+    } else {
+      // 进行质押
+      console.log(createMachineDto, 'BBBB');
+      const rs = await this.blockchainService.stake(createMachineDto);
+      console.log(rs, '<<<<<<<<<<<<<<<<<<');
+      if (rs.code === 1000) {
+        const mashineData = await this.getMachineBalance(
+          createMachineDto.machineId,
+        );
+        console.log(mashineData, '从合约获取的机器信息');
+        createMachineDto.machineInfo = mashineData;
+        console.log(createMachineDto, '存到数据库的数据');
+
+        // 如果不存在，创建新记录
+        const createdMachine = await new this.MachineModel(createMachineDto);
+        createdMachine.save();
+
+        return {
+          code: 1000,
+          msg: '质押成功',
+          data: rs,
+        };
+      } else {
+        return {
+          msg: '质押失败',
+          code: 1001,
+        };
+      }
     }
-
-    const mashineData = await this.getMachineBalance(
-      createMachineDto.machineId,
-    );
-    console.log(mashineData, '从合约获取的机器信息');
-    createMachineDto.machineInfo = mashineData;
-    console.log(createMachineDto, '存到数据库的数据');
-
-    // 如果不存在，创建新记录
-    const createdMachine = await new this.MachineModel(createMachineDto);
-    createdMachine.save();
-
-    return {
-      code: 1000,
-    };
   }
-
-  // async findAll(address: string): Promise<any> {
-  //   console.log(address, '****************************');
-
-  //   // 1. 查询数据库
-  //   const machines = await this.MachineModel.find({ address });
-  //   console.log(machines, '查询机器信息');
-
-  //   // 2. 遍历机器列表，调用合约更新数据
-  //   const updatedMachines = await Promise.all(
-  //     machines.map(async (machine) => {
-  //       const machineDataFromContract = await this.getMachineBalance(machine.machineId);
-  //       console.log(machineDataFromContract, '从合约获取的机器信息');
-
-  //       // 3. 更新数据库
-  //       if (machineDataFromContract) {
-  //         await this.MachineModel.updateOne(
-  //           { _id: machine._id },
-  //           { machineInfo: machineDataFromContract }
-  //         );
-
-  //         // 4. 更新 machineInfo 并返回最新数据
-  //         return {
-  //           ...machine.toObject(),
-  //           machineInfo: machineDataFromContract,
-  //         };
-  //       }
-
-  //       return machine.toObject();
-  //     })
-  //   );
-
-  //   return {
-  //     code: 1000,
-  //     msg: '查询成功',
-  //     data: updatedMachines,
-  //   };
-  // }
 
   async findAll(address): Promise<any> {
     const machines: any = await this.MachineModel.find({ address });
