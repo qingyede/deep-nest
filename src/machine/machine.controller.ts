@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
@@ -54,13 +53,13 @@ export class MachineController {
     return this.machineService.getPledgeTime(machineId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.machineService.findOne(id);
-  }
+  // @Get(':id')
+  // findOne(@Param('id') id: string) {
+  //   return this.machineService.findOne(id);
+  // }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMachineDto) {
-    return this.machineService.update(id, updateMachineDto);
-  }
+  // @Patch(':id')
+  // update(@Param('id') id: string, @Body() updateMachineDto) {
+  //   return this.machineService.update(id, updateMachineDto);
+  // }
 }
