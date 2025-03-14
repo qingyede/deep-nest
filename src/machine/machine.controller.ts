@@ -46,6 +46,13 @@ export class MachineController {
     return this.machineService.reward(machineId);
   }
 
+  // 解除质押
+  @Get('unStake')
+  async unStake(@Query('mashineId') machineId: string) {
+    console.log(machineId);
+    return this.machineService.unStake(machineId);
+  }
+
   // 获取质押时间并根据时间自动解除质押
   // @Get('getMachineTime')
   // async getMachineTime(@Query('mashineId') machineId: string) {

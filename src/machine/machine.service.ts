@@ -145,4 +145,9 @@ export class MachineService {
   // async getPledgeTime(machineId: string): Promise<any> {
   //   return this.blockchainService.getMachineTime(machineId);
   // }
+
+  // 解除质押
+  async unStake(machineId: string): Promise<any> {
+    return this.blockchainService.unstake(machineId);
+  }
 }

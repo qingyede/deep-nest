@@ -3,6 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import * as stakingContractAbi from './abi/stakingContractAbi.json'; // 加载 ABI
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Machine } from '../machine/machine.schema';
 
 @Injectable()
 export class BlockchainService {
@@ -10,7 +13,10 @@ export class BlockchainService {
   private contract: ethers.Contract;
   private signer: ethers.Wallet;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @InjectModel(Machine.name) private MachineModel: Model<Machine>,
+  ) {
     const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
@@ -84,18 +90,81 @@ export class BlockchainService {
     }
   }
 
-  // 获取质押时间
-  // async getMachineTime(machineId: string): Promise<any> {
-  //   try {
-  //     const result = await this.contract.getStakeEndTimestamp(machineId);
-  //     // 返回状态和时间戳（仍使用 BigInt 类型）
-  //     return { ended: result === 0n, timestamp: result.toString(), code: 200 };
-  //   } catch (error) {
-  //     throw new Error(`Failed to fetch machine info: ${error.message}`);
-  //   }
-  // }
+  // 获取质押时间解除质押
+  async unstake(machineId: string): Promise<any> {
+    try {
+      const result = await this.contract.getStakeEndTimestamp(machineId);
+      // 返回状态和时间戳（仍使用 BigInt 类型）
+      // return { ended: result === 0n, timestamp: result.toString(), code: 200 };
+      if (result === 0n) {
+        try {
+          console.log(machineId);
 
-  // 质押 NFT
+          // 发送 stake 交易
+          const tx = await this.contract.unStake(machineId);
+
+          console.log(`解除质押交易已发送，交易x哈希: ${tx.hash}`);
+
+          // 等待交易确认
+          const receipt = await tx.wait();
+          console.log(
+            `交易已确认，区块号xx: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+          );
+
+          // 检查交易状态
+          if (receipt.status === 1) {
+            // 在这里删除数据库中的数据
+            // 删除数据库中的对应记录
+            const deleteResult = await this.MachineModel.deleteOne({
+              machineId,
+            }).exec();
+            if (deleteResult.deletedCount === 0) {
+              console.warn(`数据库中未找到 machineId 为 ${machineId} 的机器`);
+              return {
+                code: 1001,
+                success: true,
+                transactionHash: tx.hash,
+                blockNumber: receipt.blockNumber,
+                msg: '解除质押成功,但是数据库中未找到机器',
+              };
+            } else {
+              console.log(
+                `成功从数据库中删除 machineId 为 ${machineId} 的机器`,
+              );
+              return {
+                code: 1000,
+                success: true,
+                transactionHash: tx.hash,
+                blockNumber: receipt.blockNumber,
+                msg: '解除质押成功',
+              };
+            }
+          } else {
+            return {
+              code: 1001,
+              msg: '解除质押失败，可能是合约逻辑回滚',
+            };
+          }
+        } catch (error) {
+          return {
+            code: 1001,
+            success: false,
+            msg: error.message,
+          };
+        }
+      } else {
+        return {
+          ended: result === 0n,
+          timestamp: result.toString(),
+          code: 1001,
+          msg: '质押还未结束，不能解除质押!',
+        };
+      }
+    } catch (error) {
+      throw new Error(`Failed to fetch machine info: ${error.message}`);
+    }
+  }
+
   // 质押 NFT
   async stake(createMachineDto): Promise<any> {
     try {
