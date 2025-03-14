@@ -244,12 +244,19 @@ export class BlockchainService {
 
       // 等待交易确认
       const receipt = await tx.wait();
-      console.log(
-        `交易已确认，区块号xx: ${receipt.blockNumber}, 状态: ${receipt.status}`,
-      );
 
       // 检查交易状态
       if (receipt.status === 1) {
+        const mashineData = await this.getMachineInfoForDBCScan(
+          createMachineDto.machineId,
+        );
+        console.log(mashineData, '从合约获取的机器信息');
+        createMachineDto.machineInfo = mashineData;
+
+        const createdMachine = await new this.MachineModel(createMachineDto);
+        await createdMachine.save(); // 确保保存完成
+        console.log(createMachineDto, '存到数据库的数据,质押成功');
+
         return {
           code: 1000,
           success: true,
@@ -259,8 +266,8 @@ export class BlockchainService {
         };
       } else {
         return {
+          msg: '质押失败',
           code: 1001,
-          msg: '交易失败，可能是合约逻辑回滚',
         };
       }
     } catch (error) {

@@ -15,39 +15,15 @@ export class MachineService {
     try {
       const existingMachine = await this.MachineModel.findOne({
         machineId: createMachineDto.machineId,
-      }).exec();
+      });
       if (existingMachine) {
         return {
           msg: 'Machine already exists',
           code: 1001,
         };
-      }
-
-      console.log(createMachineDto, 'BBBB');
-      const rs = await this.blockchainService.stake(createMachineDto);
-      console.log(rs, '<<<<<<<<<<<<<<<<<<');
-
-      if (rs.code === 1000) {
-        const mashineData = await this.getMachineBalance(
-          createMachineDto.machineId,
-        );
-        console.log(mashineData, '从合约获取的机器信息');
-        createMachineDto.machineInfo = mashineData;
-
-        const createdMachine = await new this.MachineModel(createMachineDto);
-        await createdMachine.save(); // 确保保存完成
-        console.log(createMachineDto, '存到数据库的数据,质押成功');
-
-        return {
-          code: 1000,
-          msg: '质押成功',
-          data: rs,
-        };
       } else {
-        return {
-          msg: '质押失败',
-          code: 1001,
-        };
+        console.log(createMachineDto, '传过来的参数');
+        return await this.blockchainService.stake(createMachineDto);
       }
     } catch (error) {
       console.error('Create machine failed:', error);

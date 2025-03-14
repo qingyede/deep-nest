@@ -2109,6 +2109,39 @@
         "type": "uint256"
       }
     ],
+    "name": "sta1ke1",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "stakeholder",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "machineId",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "nftTokenIds",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "nftTokenIdBalances",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rentId",
+        "type": "uint256"
+      }
+    ],
     "name": "stake",
     "outputs": [],
     "stateMutability": "nonpayable",

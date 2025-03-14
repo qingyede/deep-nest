@@ -16,7 +16,7 @@ export class BlockchainScheduler {
   ) {}
 
   // 每 10 秒执行一次
-  @Interval(10000) // 10000 毫秒 = 10 秒
+  @Interval(100000) // 10000 毫秒 = 10 秒
   async handleUnstakeTask() {
     this.logger.log('开始执行自动解除质押任务');
 
