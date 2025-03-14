@@ -12,31 +12,31 @@ export class MachineService {
   ) {}
 
   async create(createMachineDto): Promise<any> {
-    // 检查数据库中是否已存在相同的 machineId
-    const existingMachine = await this.MachineModel.findOne({
-      machineId: createMachineDto.machineId,
-    }).exec();
-    if (existingMachine) {
-      return {
-        msg: 'Machine already exists',
-        code: 1001,
-      };
-    } else {
-      // 进行质押
+    try {
+      const existingMachine = await this.MachineModel.findOne({
+        machineId: createMachineDto.machineId,
+      }).exec();
+      if (existingMachine) {
+        return {
+          msg: 'Machine already exists',
+          code: 1001,
+        };
+      }
+
       console.log(createMachineDto, 'BBBB');
       const rs = await this.blockchainService.stake(createMachineDto);
       console.log(rs, '<<<<<<<<<<<<<<<<<<');
+
       if (rs.code === 1000) {
         const mashineData = await this.getMachineBalance(
           createMachineDto.machineId,
         );
         console.log(mashineData, '从合约获取的机器信息');
         createMachineDto.machineInfo = mashineData;
-        console.log(createMachineDto, '存到数据库的数据');
 
-        // 如果不存在，创建新记录
         const createdMachine = await new this.MachineModel(createMachineDto);
-        createdMachine.save();
+        await createdMachine.save(); // 确保保存完成
+        console.log(createMachineDto, '存到数据库的数据,质押成功');
 
         return {
           code: 1000,
@@ -49,6 +49,12 @@ export class MachineService {
           code: 1001,
         };
       }
+    } catch (error) {
+      console.error('Create machine failed:', error);
+      return {
+        code: 1002,
+        msg: `创建机器失败: ${error.message}`,
+      };
     }
   }
 

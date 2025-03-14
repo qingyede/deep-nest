@@ -45,15 +45,6 @@ export class Machine extends Document {
   @Prop({ required: false }) // 链上租赁 ID
   rentalMachineId: string;
 
-  @Prop({ required: false }) // 链上租赁 ID
-  nftTokenIds: string[];
-
-  @Prop({ required: false }) // 链上租赁 ID
-  nftTokenIdBalances: string[];
-
-  @Prop({ required: false }) // 链上租赁 ID
-  rentId: string;
-
   // 嵌套的 MachineInfo 对象
   @Prop({ type: MachineInfo, required: false })
   machineInfo: MachineInfo;
