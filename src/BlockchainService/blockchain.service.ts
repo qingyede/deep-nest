@@ -91,30 +91,93 @@ export class BlockchainService {
   }
 
   // 获取质押时间解除质押
+  // async unstake(machineId: string): Promise<any> {
+  //   try {
+  //     const result = await this.contract.getStakeEndTimestamp(machineId);
+  //     // 返回状态和时间戳（仍使用 BigInt 类型）
+  //     // return { ended: result === 0n, timestamp: result.toString(), code: 200 };
+  //     if (result === 0n) {
+  //       try {
+  //         console.log(machineId);
+
+  //         // 发送 stake 交易
+  //         const tx = await this.contract.unStake(machineId);
+
+  //         console.log(`解除质押交易已发送，交易x哈希: ${tx.hash}`);
+
+  //         // 等待交易确认
+  //         const receipt = await tx.wait();
+  //         console.log(
+  //           `交易已确认，区块号xx: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+  //         );
+
+  //         // 检查交易状态
+  //         if (receipt.status === 1) {
+  //           // 在这里删除数据库中的数据
+  //           // 删除数据库中的对应记录
+  //           const deleteResult = await this.MachineModel.deleteOne({
+  //             machineId,
+  //           }).exec();
+  //           if (deleteResult.deletedCount === 0) {
+  //             console.warn(`数据库中未找到 machineId 为 ${machineId} 的机器`);
+  //             return {
+  //               code: 1001,
+  //               success: true,
+  //               transactionHash: tx.hash,
+  //               blockNumber: receipt.blockNumber,
+  //               msg: '解除质押成功,但是数据库中未找到机器',
+  //             };
+  //           } else {
+  //             console.log(
+  //               `成功从数据库中删除 machineId 为 ${machineId} 的机器`,
+  //             );
+  //             return {
+  //               code: 1000,
+  //               success: true,
+  //               transactionHash: tx.hash,
+  //               blockNumber: receipt.blockNumber,
+  //               msg: '解除质押成功',
+  //             };
+  //           }
+  //         } else {
+  //           return {
+  //             code: 1001,
+  //             msg: '解除质押失败，可能是合约逻辑回滚',
+  //           };
+  //         }
+  //       } catch (error) {
+  //         return {
+  //           code: 1001,
+  //           success: false,
+  //           msg: error.message,
+  //         };
+  //       }
+  //     } else {
+  //       return {
+  //         ended: result === 0n,
+  //         timestamp: result.toString(),
+  //         code: 1001,
+  //         msg: '质押还未结束，不能解除质押!',
+  //       };
+  //     }
+  //   } catch (error) {
+  //     throw new Error(`Failed to fetch machine info: ${error.message}`);
+  //   }
+  // }
   async unstake(machineId: string): Promise<any> {
     try {
       const result = await this.contract.getStakeEndTimestamp(machineId);
-      // 返回状态和时间戳（仍使用 BigInt 类型）
-      // return { ended: result === 0n, timestamp: result.toString(), code: 200 };
+      console.log(`质押结束时间 for ${machineId}: ${result.toString()}`);
       if (result === 0n) {
         try {
-          console.log(machineId);
-
-          // 发送 stake 交易
+          console.log(`尝试解除质押: ${machineId}`);
           const tx = await this.contract.unStake(machineId);
-
-          console.log(`解除质押交易已发送，交易x哈希: ${tx.hash}`);
-
-          // 等待交易确认
+          console.log(`解除质押交易已发送，交易哈希: ${tx.hash}`);
           const receipt = await tx.wait();
           console.log(
-            `交易已确认，区块号xx: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+            `交易确认，区块号: ${receipt.blockNumber}, 状态: ${receipt.status}`,
           );
-
-          // 检查交易状态
           if (receipt.status === 1) {
-            // 在这里删除数据库中的数据
-            // 删除数据库中的对应记录
             const deleteResult = await this.MachineModel.deleteOne({
               machineId,
             }).exec();
@@ -125,12 +188,10 @@ export class BlockchainService {
                 success: true,
                 transactionHash: tx.hash,
                 blockNumber: receipt.blockNumber,
-                msg: '解除质押成功,但是数据库中未找到机器',
+                msg: '解除质押成功,但数据库中未找到机器',
               };
             } else {
-              console.log(
-                `成功从数据库中删除 machineId 为 ${machineId} 的机器`,
-              );
+              console.log(`成功删除 machineId 为 ${machineId} 的数据库记录`);
               return {
                 code: 1000,
                 success: true,
@@ -140,31 +201,29 @@ export class BlockchainService {
               };
             }
           } else {
-            return {
-              code: 1001,
-              msg: '解除质押失败，可能是合约逻辑回滚',
-            };
+            return { code: 1001, msg: '解除质押失败，交易状态非1' };
           }
         } catch (error) {
-          return {
-            code: 1001,
-            success: false,
-            msg: error.message,
-          };
+          console.error(`解除质押交易失败 for ${machineId}: ${error.message}`);
+          return { code: 1001, success: false, msg: error.message };
         }
       } else {
         return {
           ended: result === 0n,
           timestamp: result.toString(),
           code: 1001,
-          msg: '质押还未结束，不能解除质押!',
+          msg: '质押还未结束，不能解除质押',
         };
       }
     } catch (error) {
-      throw new Error(`Failed to fetch machine info: ${error.message}`);
+      console.error(`获取质押时间失败 for ${machineId}: ${error.message}`);
+      return {
+        code: 1001,
+        success: false,
+        msg: `获取质押时间失败: ${error.message}`,
+      };
     }
   }
-
   // 质押 NFT
   async stake(createMachineDto): Promise<any> {
     try {
