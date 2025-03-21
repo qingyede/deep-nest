@@ -15,32 +15,46 @@ export class BlockchainScheduler {
     @InjectModel(Machine.name) private readonly MachineModel: Model<Machine>,
   ) {}
 
-  // 每 10 秒执行一次
-  @Interval(100000) // 10000 毫秒 = 10 秒
-  async handleUnstakeTask() {
-    this.logger.log('开始执行自动解除质押任务');
+  // // 每 10 秒执行一次
+  // @Interval(100000) // 10000 毫秒 = 10 秒
+  // async handleUnstakeTask() {
+  //   this.logger.log('开始执行自动解除质押任务');
+
+  //   try {
+  //     // 查询数据库中所有机器
+  //     const machines = await this.MachineModel.find().exec();
+  //     this.logger.log(`找到 ${machines.length} 台机器`);
+
+  //     if (!machines.length) {
+  //       this.logger.log('数据库中没有机器记录，任务结束');
+  //       return;
+  //     }
+
+  //     // 遍历所有机器，仅调用 unstake
+  //     for (const machine of machines) {
+  //       const machineId = machine.machineId;
+  //       this.logger.log(`准备解除质押: ${machineId}`);
+
+  //       // 直接调用 unstake 方法
+  //       const result = await this.blockchainService.unstake(machineId);
+  //       this.logger.log(`解除质押结果: ${JSON.stringify(result)}`);
+  //     }
+  //   } catch (error) {
+  //     this.logger.error('自动解除质押任务失败', error.stack);
+  //   }
+  // }
+
+  // 每 10 分钟执行一次 getMachineInfoForDBCScanAndUnstake 任务
+  @Interval(10000) // 600000 毫秒 = 10 分钟
+  async handleScanAndUnstakeTask() {
+    this.logger.log('开始执行扫描并自动解除质押任务');
 
     try {
-      // 查询数据库中所有机器
-      const machines = await this.MachineModel.find().exec();
-      this.logger.log(`找到 ${machines.length} 台机器`);
-
-      if (!machines.length) {
-        this.logger.log('数据库中没有机器记录，任务结束');
-        return;
-      }
-
-      // 遍历所有机器，仅调用 unstake
-      for (const machine of machines) {
-        const machineId = machine.machineId;
-        this.logger.log(`准备解除质押: ${machineId}`);
-
-        // 直接调用 unstake 方法
-        const result = await this.blockchainService.unstake(machineId);
-        this.logger.log(`解除质押结果: ${JSON.stringify(result)}`);
-      }
+      const result =
+        await this.blockchainService.getMachineInfoForDBCScanAndUnstake();
+      this.logger.log(`扫描并解除质押结果: ${JSON.stringify(result)}`);
     } catch (error) {
-      this.logger.error('自动解除质押任务失败', error.stack);
+      this.logger.error('扫描并自动解除质押任务失败', error.stack);
     }
   }
 }

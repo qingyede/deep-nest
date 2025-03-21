@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Machine } from './machine.schema';
 import { BlockchainService } from '../BlockchainService/blockchain.service';
-
+import axios, { AxiosResponse } from 'axios';
 @Injectable()
 export class MachineService {
   constructor(
@@ -117,13 +117,58 @@ export class MachineService {
     return this.blockchainService.claimReward(machineId);
   }
 
-  // 获得质押时间
-  // async getPledgeTime(machineId: string): Promise<any> {
-  //   return this.blockchainService.getMachineTime(machineId);
-  // }
-
   // 解除质押
   async unStake(machineId: string): Promise<any> {
     return this.blockchainService.unstake(machineId);
+  }
+
+  // 质押之前的注册
+
+  async siginHandle(): Promise<any> {
+    try {
+      const registerUrl = 'http://13.212.188.162:7801/api/v0/contract/register';
+
+      const requestData = {
+        project_name: 'DeepLink BandWidth',
+        staking_type: 2,
+        machine_id:
+          'ff684c9b13d7c60dce5577a18e3254d4308b7343b9e79b4eb2f29d803cd51f12',
+      };
+
+      // 使用 axios 发送 POST 请求
+      const response: AxiosResponse = await axios.post(
+        registerUrl,
+        requestData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      console.log(response.data);
+      return {
+        status: 200,
+        msg: '成功',
+        data: response.data,
+      };
+    } catch (error) {
+      return {
+        status: 10001,
+        msg: `注册失败：${error.message || '网络请求错误'}`,
+      };
+    }
+  }
+
+  // 质押之前的注销
+
+  async unregister(createMachineDto): Promise<any> {
+    return this.blockchainService.unregister(createMachineDto);
+  }
+
+  // 查询全部机器判断是否到期自动解除质押
+
+  // 解除质押
+  async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
+    return this.blockchainService.getMachineInfoForDBCScanAndUnstake();
   }
 }

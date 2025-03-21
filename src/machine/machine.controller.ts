@@ -53,6 +53,24 @@ export class MachineController {
     return this.machineService.unStake(machineId);
   }
 
+  // 带宽之前的注册
+  @Post('contractRegister')
+  siginHandle() {
+    return this.machineService.siginHandle();
+  }
+
+  // 带宽之前的注销
+  @Post('contractUnregister')
+  unregister(@Body() createMachineDto) {
+    return this.machineService.unregister(createMachineDto);
+  }
+
+  // 查询全部机器判断是否到期自动解除质押
+  @Get('getMachineTimeAndUnStake')
+  async getMachineInfoForDBCScanAndUnstake() {
+    return this.machineService.getMachineInfoForDBCScanAndUnstake();
+  }
+
   // 获取质押时间并根据时间自动解除质押
   // @Get('getMachineTime')
   // async getMachineTime(@Query('mashineId') machineId: string) {

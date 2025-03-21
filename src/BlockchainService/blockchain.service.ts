@@ -6,6 +6,7 @@ import * as stakingContractAbi from './abi/stakingContractAbi.json'; // 加载 A
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Machine } from '../machine/machine.schema';
+import axios, { AxiosResponse } from 'axios';
 
 @Injectable()
 export class BlockchainService {
@@ -17,7 +18,13 @@ export class BlockchainService {
     private configService: ConfigService,
     @InjectModel(Machine.name) private MachineModel: Model<Machine>,
   ) {
-    const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
+    // const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
+    const env = this.configService.get<string>('NODE_ENV', 'test');
+
+    const rpcUrl = this.configService.get<string>(
+      env === 'production' ? 'RPC_URL_PROD' : 'RPC_URL_TEST',
+    );
+
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
     // 读取私钥（建议从环境变量中获取）
@@ -31,7 +38,16 @@ export class BlockchainService {
     this.signer = new ethers.Wallet(privateKey, this.provider);
 
     // 连接合约，使用 signer 进行交易
-    const contractAddress = '0x7FDC6ed8387f3184De77E0cF6D6f3B361F906C21';
+    // const contractAddress = '0x7FDC6ed8387f3184De77E0cF6D6f3B361F906C21';
+
+    const contractAddress = this.configService.get<string>(
+      env === 'production' ? 'CONTRACT_ADDRESS_PROD' : 'CONTRACT_ADDRESS_TEST',
+    );
+
+    console.log(`环境: ${env}`);
+    console.log(`RPC URL: ${rpcUrl}`);
+    console.log(`合约地址: ${contractAddress}`);
+
     this.contract = new ethers.Contract(
       contractAddress,
       stakingContractAbi,
@@ -90,80 +106,6 @@ export class BlockchainService {
     }
   }
 
-  // 获取质押时间解除质押
-  // async unstake(machineId: string): Promise<any> {
-  //   try {
-  //     const result = await this.contract.getStakeEndTimestamp(machineId);
-  //     // 返回状态和时间戳（仍使用 BigInt 类型）
-  //     // return { ended: result === 0n, timestamp: result.toString(), code: 200 };
-  //     if (result === 0n) {
-  //       try {
-  //         console.log(machineId);
-
-  //         // 发送 stake 交易
-  //         const tx = await this.contract.unStake(machineId);
-
-  //         console.log(`解除质押交易已发送，交易x哈希: ${tx.hash}`);
-
-  //         // 等待交易确认
-  //         const receipt = await tx.wait();
-  //         console.log(
-  //           `交易已确认，区块号xx: ${receipt.blockNumber}, 状态: ${receipt.status}`,
-  //         );
-
-  //         // 检查交易状态
-  //         if (receipt.status === 1) {
-  //           // 在这里删除数据库中的数据
-  //           // 删除数据库中的对应记录
-  //           const deleteResult = await this.MachineModel.deleteOne({
-  //             machineId,
-  //           }).exec();
-  //           if (deleteResult.deletedCount === 0) {
-  //             console.warn(`数据库中未找到 machineId 为 ${machineId} 的机器`);
-  //             return {
-  //               code: 1001,
-  //               success: true,
-  //               transactionHash: tx.hash,
-  //               blockNumber: receipt.blockNumber,
-  //               msg: '解除质押成功,但是数据库中未找到机器',
-  //             };
-  //           } else {
-  //             console.log(
-  //               `成功从数据库中删除 machineId 为 ${machineId} 的机器`,
-  //             );
-  //             return {
-  //               code: 1000,
-  //               success: true,
-  //               transactionHash: tx.hash,
-  //               blockNumber: receipt.blockNumber,
-  //               msg: '解除质押成功',
-  //             };
-  //           }
-  //         } else {
-  //           return {
-  //             code: 1001,
-  //             msg: '解除质押失败，可能是合约逻辑回滚',
-  //           };
-  //         }
-  //       } catch (error) {
-  //         return {
-  //           code: 1001,
-  //           success: false,
-  //           msg: error.message,
-  //         };
-  //       }
-  //     } else {
-  //       return {
-  //         ended: result === 0n,
-  //         timestamp: result.toString(),
-  //         code: 1001,
-  //         msg: '质押还未结束，不能解除质押!',
-  //       };
-  //     }
-  //   } catch (error) {
-  //     throw new Error(`Failed to fetch machine info: ${error.message}`);
-  //   }
-  // }
   async unstake(machineId: string): Promise<any> {
     try {
       const result = await this.contract.getStakeEndTimestamp(machineId);
@@ -275,6 +217,129 @@ export class BlockchainService {
         code: 1001,
         success: false,
         msg: error.message,
+      };
+    }
+  }
+
+  // 质押之前的注销
+
+  async unregister(createMachineDto) {
+    const env = this.configService.get<string>('NODE_ENV', 'test');
+
+    const ApiBase = this.configService.get<string>(
+      env === 'production' ? 'API_BASE_PROD' : 'API_BASE_TEST',
+    );
+    const url = `${ApiBase}/api/v0/contract/unregister`; // 假设 contractAddress 已定义
+    const data = {
+      project_name: 'DeepLink BandWidth',
+      staking_type: 2,
+      machine_id: createMachineDto.machineId, // 假设 machineId 已定义
+    };
+
+    try {
+      const response: AxiosResponse = await axios.post(url, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
+          Accept: '*/*',
+          Connection: 'keep-alive',
+        },
+      });
+
+      return response.data; // axios 直接返回解析后的数据
+    } catch (error) {
+      throw new Error(
+        error.response
+          ? `Unregister failed with status ${error.response.status}: ${error.response.data}`
+          : `Unregister failed: ${error.message}`,
+      );
+    }
+  }
+
+  // 查询全部机器判断是否到期自动解除质押
+  async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
+    try {
+      const result = await this.MachineModel.find(); // 获取所有机器信息
+
+      // 使用 Promise.all 等待所有异步操作完成
+      const stakeEndResults = await Promise.all(
+        result.map(async (machine) => {
+          console.log(machine.machineId);
+          const stakeEndTimestamp = await this.contract.getStakeEndTimestamp(
+            machine.machineId,
+          );
+          console.log(
+            `质押结束时间 for ${machine.machineId}: ${stakeEndTimestamp.toString()}`,
+          );
+          if (
+            stakeEndTimestamp <= 0n ||
+            Number(stakeEndTimestamp) >= Math.floor(Date.now() / 1000)
+          ) {
+            try {
+              console.log(`尝试解除质押: ${machine.machineId}`);
+              const tx = await this.contract.unStake(machine.machineId);
+              console.log(`解除质押交易已发送，交易哈希: ${tx.hash}`);
+              const receipt = await tx.wait();
+              console.log(
+                `交易确认，区块号: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+              );
+              if (receipt.status === 1) {
+                const deleteResult = await this.MachineModel.deleteOne({
+                  machineId: machine.machineId,
+                }).exec();
+                if (deleteResult.deletedCount === 0) {
+                  console.warn(
+                    `数据库中未找到 machineId 为 ${machine.machineId} 的机器`,
+                  );
+                  return {
+                    code: 1001,
+                    success: true,
+                    transactionHash: tx.hash,
+                    blockNumber: receipt.blockNumber,
+                    msg: '解除质押成功,但数据库中未找到机器',
+                  };
+                } else {
+                  console.log(
+                    `成功删除 machineId 为 ${machine.machineId} 的数据库记录`,
+                  );
+                  return {
+                    code: 1000,
+                    success: true,
+                    transactionHash: tx.hash,
+                    blockNumber: receipt.blockNumber,
+                    msg: '解除质押成功',
+                  };
+                }
+              } else {
+                return { code: 1001, msg: '解除质押失败，交易状态非1' };
+              }
+            } catch (error) {
+              console.error(
+                `解除质押交易失败 for ${machine.machineId}: ${error.message}`,
+              );
+              return { code: 1001, success: false, msg: error.message };
+            }
+          } else {
+            return {
+              ended: false,
+              timestamp: stakeEndTimestamp.toString(),
+              code: 1001,
+              msg: '质押还未结束，不能解除质押',
+            };
+          }
+        }),
+      );
+
+      return {
+        code: 200,
+        success: true,
+        data: stakeEndResults, // 返回所有机器的质押结束时间
+      };
+    } catch (error) {
+      return {
+        code: 1001,
+        success: false,
+        msg: `获取机器信息失败: ${error.message}`,
       };
     }
   }
