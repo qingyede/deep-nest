@@ -22,7 +22,6 @@ export class MachineService {
           code: 1001,
         };
       } else {
-        console.log(createMachineDto, '传过来的参数');
         return await this.blockchainService.stake(createMachineDto);
       }
     } catch (error) {

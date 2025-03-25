@@ -6,7 +6,7 @@ import * as stakingContractAbi from './abi/stakingContractAbi.json'; // 加载 A
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Machine } from '../machine/machine.schema';
-import axios, { AxiosResponse } from 'axios';
+// import axios, { AxiosResponse } from 'axios';
 
 @Injectable()
 export class BlockchainService {
@@ -169,7 +169,7 @@ export class BlockchainService {
   // 质押 NFT
   async stake(createMachineDto): Promise<any> {
     try {
-      console.log(createMachineDto);
+      console.log(createMachineDto, '质押传过来的参数');
 
       // 发送 stake 交易
       const tx = await this.contract.stake(
@@ -213,6 +213,7 @@ export class BlockchainService {
         };
       }
     } catch (error) {
+      console.log(error);
       return {
         code: 1001,
         success: false,
@@ -235,24 +236,32 @@ export class BlockchainService {
       staking_type: 2,
       machine_id: createMachineDto.machineId, // 假设 machineId 已定义
     };
-
+    console.log(data, 'KKK');
     try {
-      const response: AxiosResponse = await axios.post(url, data, {
+      const response = await fetch(url, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
           Accept: '*/*',
           Connection: 'keep-alive',
         },
+        body: JSON.stringify(data),
       });
 
-      return response.data; // axios 直接返回解析后的数据
+      if (response.ok) {
+        return await response.json();
+      } else {
+        return {
+          code: 1001,
+          msg: '注销请求失败',
+        };
+      }
     } catch (error) {
-      throw new Error(
-        error.response
-          ? `Unregister failed with status ${error.response.status}: ${error.response.data}`
-          : `Unregister failed: ${error.message}`,
-      );
+      return {
+        code: 1001,
+        msg: error,
+      };
     }
   }
 
@@ -272,52 +281,63 @@ export class BlockchainService {
             `质押结束时间 for ${machine.machineId}: ${stakeEndTimestamp.toString()}`,
           );
           if (
+            Number(stakeEndTimestamp) === 0 ||
             stakeEndTimestamp <= 0n ||
             Number(stakeEndTimestamp) >= Math.floor(Date.now() / 1000)
           ) {
-            try {
-              console.log(`尝试解除质押: ${machine.machineId}`);
-              const tx = await this.contract.unStake(machine.machineId);
-              console.log(`解除质押交易已发送，交易哈希: ${tx.hash}`);
-              const receipt = await tx.wait();
-              console.log(
-                `交易确认，区块号: ${receipt.blockNumber}, 状态: ${receipt.status}`,
-              );
-              if (receipt.status === 1) {
-                const deleteResult = await this.MachineModel.deleteOne({
-                  machineId: machine.machineId,
-                }).exec();
-                if (deleteResult.deletedCount === 0) {
-                  console.warn(
-                    `数据库中未找到 machineId 为 ${machine.machineId} 的机器`,
-                  );
-                  return {
-                    code: 1001,
-                    success: true,
-                    transactionHash: tx.hash,
-                    blockNumber: receipt.blockNumber,
-                    msg: '解除质押成功,但数据库中未找到机器',
-                  };
+            // 先注销
+            const unregisterResult = await this.unregister(machine.machineId);
+            console.log(unregisterResult, '注销结果');
+            if (unregisterResult.code === 0) {
+              try {
+                console.log(`尝试解除质押: ${machine.machineId}`);
+                const tx = await this.contract.unStake(machine.machineId);
+                console.log(`解除质押交易已发送，交易哈希: ${tx.hash}`);
+                const receipt = await tx.wait();
+                console.log(
+                  `交易确认，区块号: ${receipt.blockNumber}, 状态: ${receipt.status}`,
+                );
+                if (receipt.status === 1) {
+                  const deleteResult = await this.MachineModel.deleteOne({
+                    machineId: machine.machineId,
+                  }).exec();
+                  if (deleteResult.deletedCount === 0) {
+                    console.warn(
+                      `数据库中未找到 machineId 为 ${machine.machineId} 的机器`,
+                    );
+                    return {
+                      code: 1001,
+                      success: true,
+                      transactionHash: tx.hash,
+                      blockNumber: receipt.blockNumber,
+                      msg: '解除质押成功,但数据库中未找到机器',
+                    };
+                  } else {
+                    console.log(
+                      `成功删除 machineId 为 ${machine.machineId} 的数据库记录`,
+                    );
+                    return {
+                      code: 1000,
+                      success: true,
+                      transactionHash: tx.hash,
+                      blockNumber: receipt.blockNumber,
+                      msg: '解除质押成功',
+                    };
+                  }
                 } else {
-                  console.log(
-                    `成功删除 machineId 为 ${machine.machineId} 的数据库记录`,
-                  );
-                  return {
-                    code: 1000,
-                    success: true,
-                    transactionHash: tx.hash,
-                    blockNumber: receipt.blockNumber,
-                    msg: '解除质押成功',
-                  };
+                  return { code: 1001, msg: '解除质押失败，交易状态非1' };
                 }
-              } else {
-                return { code: 1001, msg: '解除质押失败，交易状态非1' };
+              } catch (error) {
+                console.error(
+                  `解除质押交易失败 for ${machine.machineId}: ${error.message}`,
+                );
+                return { code: 1001, success: false, msg: error.message };
               }
-            } catch (error) {
-              console.error(
-                `解除质押交易失败 for ${machine.machineId}: ${error.message}`,
-              );
-              return { code: 1001, success: false, msg: error.message };
+            } else {
+              return {
+                code: 1001,
+                msg: '解除质押失败，因为注销失败',
+              };
             }
           } else {
             return {

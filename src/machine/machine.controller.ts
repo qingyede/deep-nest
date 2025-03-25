@@ -62,6 +62,7 @@ export class MachineController {
   // 带宽之前的注销
   @Post('contractUnregister')
   unregister(@Body() createMachineDto) {
+    console.log(55);
     return this.machineService.unregister(createMachineDto);
   }
 
