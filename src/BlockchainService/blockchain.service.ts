@@ -298,7 +298,7 @@ export class BlockchainService {
           if (
             Number(stakeEndTimestamp) === 0 ||
             stakeEndTimestamp <= 0n ||
-            Number(stakeEndTimestamp) >= Math.floor(Date.now() / 1000)
+            Number(stakeEndTimestamp) < Math.floor(Date.now() / 1000)
           ) {
             // 先注销
             const unregisterResult = await this.unregister(machine.machineId);
