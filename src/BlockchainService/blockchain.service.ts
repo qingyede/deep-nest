@@ -224,16 +224,17 @@ export class BlockchainService {
 
   // 质押之前的注销
 
-  async unregister(createMachineDto) {
+  async unregister(machineId) {
     const env = this.configService.get<string>('NODE_ENV', 'test');
     const ApiBase = this.configService.get<string>(
       env === 'production' ? 'API_BASE_PROD' : 'API_BASE_TEST',
     );
     const url = `${ApiBase}/api/v0/contract/unregister`;
+    console.log(url, 'urlurlurl');
     const data = {
       project_name: 'DeepLink BandWidth',
       staking_type: 2,
-      machine_id: createMachineDto.machineId,
+      machine_id: machineId,
     };
     console.log(data, 'KKK');
 
