@@ -226,45 +226,59 @@ export class BlockchainService {
 
   async unregister(createMachineDto) {
     const env = this.configService.get<string>('NODE_ENV', 'test');
-
     const ApiBase = this.configService.get<string>(
       env === 'production' ? 'API_BASE_PROD' : 'API_BASE_TEST',
     );
-    const url = `${ApiBase}/api/v0/contract/unregister`; // 假设 contractAddress 已定义
+    const url = `${ApiBase}/api/v0/contract/unregister`;
     const data = {
       project_name: 'DeepLink BandWidth',
       staking_type: 2,
-      machine_id: createMachineDto.machineId, // 假设 machineId 已定义
+      machine_id: createMachineDto.machineId,
     };
     console.log(data, 'KKK');
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
-          Accept: '*/*',
-          Connection: 'keep-alive',
-        },
-        body: JSON.stringify(data),
-      });
 
-      if (response.ok) {
-        return await response.json();
-      } else {
-        return {
-          code: 1001,
-          msg: '注销请求失败',
-        };
+    const maxRetries = 3;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(data),
+          signal: controller.signal, // 超时控制
+        });
+
+        clearTimeout(timeout); // 请求成功后清除超时
+
+        if (response.ok) {
+          return await response.json();
+        } else {
+          const errorText = await response.text();
+          return {
+            code: 1001,
+            msg: `注销请求失败: ${response.status} - ${errorText}`,
+          };
+        }
+      } catch (error) {
+        console.log(`Attempt ${attempt} failed:`, error);
+
+        if (attempt === maxRetries) {
+          return {
+            code: 1001,
+            msg: `注销失败: ${error.message || '网络错误'}`,
+          };
+        }
+        // 等待一段时间后重试（指数退避）
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
-    } catch (error) {
-      return {
-        code: 1001,
-        msg: error,
-      };
     }
   }
-
   // 查询全部机器判断是否到期自动解除质押
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     try {
