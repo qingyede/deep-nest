@@ -18,12 +18,9 @@ export class GpuWeb3Service {
     private configService: ConfigService,
     @InjectModel(GpuMachine.name) private MachineModel: Model<GpuMachine>,
   ) {
-    // const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
     const env = this.configService.get<string>('NODE_ENV', 'test');
 
-    const rpcUrl = this.configService.get<string>(
-      env === 'production' ? 'RPC_URL_PROD' : 'RPC_URL_TEST',
-    );
+    const rpcUrl = 'https://rpc.dbcwallet.io';
 
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
@@ -58,6 +55,7 @@ export class GpuWeb3Service {
   async getMachineInfoForDBCScan(machineId: string): Promise<any> {
     try {
       // 调用合约方法
+      console.log(machineId, '拿到的机器ID');
       const result = await this.contract.getMachineInfoForDBCScan(machineId);
       console.log('合约返回原始数据:', result);
 
