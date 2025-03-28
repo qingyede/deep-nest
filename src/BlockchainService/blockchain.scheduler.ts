@@ -49,12 +49,12 @@ export class BlockchainScheduler {
   async handleScanAndUnstakeTask() {
     this.logger.log('开始执行扫描并自动解除质押任务');
 
-    try {
-      const result =
-        await this.blockchainService.getMachineInfoForDBCScanAndUnstake();
-      this.logger.log(`扫描并解除质押结果: ${JSON.stringify(result)}`);
-    } catch (error) {
-      this.logger.error('扫描并自动解除质押任务失败', error.stack);
-    }
+    // try {
+    //   const result =
+    //     await this.blockchainService.getMachineInfoForDBCScanAndUnstake();
+    //   this.logger.log(`扫描并解除质押结果: ${JSON.stringify(result)}`);
+    // } catch (error) {
+    //   this.logger.error('扫描并自动解除质押任务失败', error.stack);
+    // }
   }
 }
