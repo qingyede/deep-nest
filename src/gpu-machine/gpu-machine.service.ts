@@ -75,4 +75,28 @@ export class GpuMachineService {
       };
     }
   }
+
+  async deleteByMachineId(machineId: string): Promise<any> {
+    try {
+      const result = await this.gpuMachineModel.deleteOne({ machineId }).exec();
+      if (result.deletedCount === 0) {
+        return {
+          code: 1002,
+          msg: `No machine found with machineId ${machineId}`,
+          data: { deletedCount: 0 },
+        };
+      }
+      return {
+        code: 1000,
+        msg: `Machine with machineId ${machineId} deleted successfully`,
+        data: { deletedCount: result.deletedCount },
+      };
+    } catch (error) {
+      return {
+        code: 1001,
+        msg: `Failed to delete machine: ${error.message}`,
+        data: { deletedCount: 0 },
+      };
+    }
+  }
 }

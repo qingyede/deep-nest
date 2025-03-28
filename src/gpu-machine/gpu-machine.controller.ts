@@ -21,4 +21,9 @@ export class GpuMachineController {
   async deleteByWalletAddress(@Param('walletAddress') walletAddress: string) {
     return this.gpuMachineService.deleteByWalletAddress(walletAddress);
   }
+
+  @Delete('machine/:machineId')
+  async removeMachineByUniqueId(@Param('machineId') machineId: string) {
+    return this.gpuMachineService.deleteByMachineId(machineId);
+  }
 }
