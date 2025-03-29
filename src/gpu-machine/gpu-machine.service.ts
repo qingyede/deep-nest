@@ -1,4 +1,3 @@
-// gpu-machine/gpu-machine.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -16,12 +15,9 @@ export class GpuMachineService {
   async create(createGpuMachineDto: CreateGpuMachineDto): Promise<any> {
     try {
       const { machineId, walletAddress } = createGpuMachineDto;
-      const machineInfo =
-        await this.blockchainService.getMachineInfoForDBCScan(machineId);
       const newGpuMachine = new this.gpuMachineModel({
         machineId,
         walletAddress,
-        ...machineInfo,
       });
       const savedMachine = await newGpuMachine.save();
       return {
@@ -42,11 +38,34 @@ export class GpuMachineService {
     try {
       const machines = await this.gpuMachineModel
         .find({ walletAddress })
+        .select('machineId')
         .exec();
+
+      if (!machines.length) {
+        return {
+          code: 1000,
+          msg: 'Machines retrieved successfully', // 与旧版保持一致
+          data: [],
+        };
+      }
+
+      const machineIds = machines.map((m) => m.machineId);
+      const machineInfos = await Promise.all(
+        machineIds.map(async (machineId) => {
+          const info =
+            await this.blockchainService.getMachineInfoForDBCScan(machineId);
+          return {
+            machineId, // 添加 machineId
+            walletAddress, // 添加 walletAddress
+            ...info, // 展开合约返回的字段
+          };
+        }),
+      );
+
       return {
         code: 1000,
         msg: 'Machines retrieved successfully',
-        data: machines,
+        data: machineInfos,
       };
     } catch (error) {
       return {
@@ -78,6 +97,7 @@ export class GpuMachineService {
 
   async deleteByMachineId(machineId: string): Promise<any> {
     try {
+      console.log(machineId, 'LLLL');
       const result = await this.gpuMachineModel.deleteOne({ machineId }).exec();
       if (result.deletedCount === 0) {
         return {

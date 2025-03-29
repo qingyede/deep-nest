@@ -10,36 +10,36 @@ export class GpuMachine extends Document {
   @Prop({ required: true })
   walletAddress: string;
 
-  // 合约返回的字段
-  @Prop({ type: Boolean, default: false })
-  isStaking: boolean;
+  // // 合约返回的字段
+  // @Prop({ type: Boolean, default: false })
+  // isStaking: boolean;
 
-  @Prop({ type: String })
-  region: string;
+  // @Prop({ type: String })
+  // region: string;
 
-  @Prop({ type: Number })
-  hdd: number;
+  // @Prop({ type: Number })
+  // hdd: number;
 
-  @Prop({ type: Number })
-  bandwidth: number;
+  // @Prop({ type: Number })
+  // bandwidth: number;
 
-  @Prop({ type: Number })
-  mem: number;
+  // @Prop({ type: Number })
+  // mem: number;
 
-  @Prop({ type: Number })
-  cpuCors: number;
+  // @Prop({ type: Number })
+  // cpuCors: number;
 
-  @Prop({ type: String })
-  projectName: string;
+  // @Prop({ type: String })
+  // projectName: string;
 
-  @Prop({ type: String })
-  totalRewardAmount: string;
+  // @Prop({ type: String })
+  // totalRewardAmount: string;
 
-  @Prop({ type: String })
-  claimedRewardAmount: string;
+  // @Prop({ type: String })
+  // claimedRewardAmount: string;
 
-  @Prop({ type: String })
-  lockedRewardAmount: string;
+  // @Prop({ type: String })
+  // lockedRewardAmount: string;
 }
 
 export const GpuMachineSchema = SchemaFactory.createForClass(GpuMachine);

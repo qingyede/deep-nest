@@ -47,8 +47,7 @@ export class BlockchainScheduler {
   // 每 10 分钟执行一次 getMachineInfoForDBCScanAndUnstake 任务
   @Interval(10000) // 600000 毫秒 = 10 分钟
   async handleScanAndUnstakeTask() {
-    this.logger.log('开始执行扫描并自动解除质押任务');
-
+    // this.logger.log('开始执行扫描并自动解除质押任务');
     // try {
     //   const result =
     //     await this.blockchainService.getMachineInfoForDBCScanAndUnstake();
