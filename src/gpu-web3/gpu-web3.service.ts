@@ -42,7 +42,7 @@ export class GpuWeb3Service {
 
     console.log(`环境: ${env}`);
     console.log(`RPC URL: ${rpcUrl}`);
-    console.log(`合约地址: ${contractAddress}`);
+    console.log(`带宽质押合约地址: ${contractAddress}`);
 
     this.contract = new ethers.Contract(
       contractAddress,

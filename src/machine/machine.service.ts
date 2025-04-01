@@ -111,11 +111,6 @@ export class MachineService {
     return this.blockchainService.getMachineInfoForDBCScan(mashineId);
   }
 
-  // 领取奖励
-  async reward(machineId: string): Promise<any> {
-    return this.blockchainService.claimReward(machineId);
-  }
-
   // 解除质押
   async unStake(machineId: string): Promise<any> {
     return this.blockchainService.unstake(machineId);
@@ -166,7 +161,6 @@ export class MachineService {
 
   // 查询全部机器判断是否到期自动解除质押
 
-  // 解除质押
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     return this.blockchainService.getMachineInfoForDBCScanAndUnstake();
   }

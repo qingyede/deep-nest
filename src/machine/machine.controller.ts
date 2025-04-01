@@ -39,13 +39,6 @@ export class MachineController {
     return this.machineService.getMachineBalance(address);
   }
 
-  // 领取奖励
-  @Get('getReward')
-  async reward(@Query('mashineId') machineId: string) {
-    console.log(machineId);
-    return this.machineService.reward(machineId);
-  }
-
   // 解除质押
   @Get('unStake')
   async unStake(@Query('mashineId') machineId: string) {
