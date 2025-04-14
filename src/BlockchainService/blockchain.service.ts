@@ -34,6 +34,7 @@ export class BlockchainService {
       throw new Error('Private key is missing in environment variables');
     }
 
+    console.log(process.env.NODE_PRIVATEKEY, '我的私钥');
     // 使用私钥创建 signer
     this.signer = new ethers.Wallet(privateKey, this.provider);
 
