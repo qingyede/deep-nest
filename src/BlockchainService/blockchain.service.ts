@@ -28,8 +28,7 @@ export class BlockchainService {
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
     // 读取私钥（建议从环境变量中获取）
-    const privateKey =
-      '4edcc831171df477093ae0f34b3141bbab9b6ac76bd95776793ef5129a3b266a';
+    const privateKey = process.env.NODE_PRIVATEKEY;
     if (!privateKey) {
       throw new Error('Private key is missing in environment variables');
     }
@@ -151,6 +150,7 @@ export class BlockchainService {
           BigInt(balance),
         ),
         createMachineDto.rentId,
+        createMachineDto.rewardAddress,
       );
 
       console.log(`质押交易已发送，交易哈希: ${tx.hash}`);
