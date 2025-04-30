@@ -40,7 +40,9 @@ export class BlockchainService {
     // 连接合约，使用 signer 进行交易
     // const contractAddress = '0x7FDC6ed8387f3184De77E0cF6D6f3B361F906C21';
 
-    const contractAddress = '0x3c059dbe0f42d65acd763c3c3da8b5a1b12bb74f';
+    const contractAddress = this.configService.get<string>(
+      env === 'production' ? 'CONTRACT_ADDRESS_PROD' : 'CONTRACT_ADDRESS_TEST',
+    );
 
     console.log(`环境: ${env}`);
     console.log(`RPC URL: ${rpcUrl}`);
