@@ -44,16 +44,28 @@ export class BlockchainScheduler {
   //   }
   // }
 
+  // 加在类里作为状态标志
+  private isUnstaking = false;
+
   // 每 10 分钟执行一次 getMachineInfoForDBCScanAndUnstake 任务
   @Interval(10000) // 600000 毫秒 = 10 分钟
   async handleScanAndUnstakeTask() {
+    if (this.isUnstaking) {
+      this.logger.warn('解除质押任务仍在执行中，跳过本轮');
+      return;
+    }
+
+    this.isUnstaking = true;
     this.logger.log('开始执行扫描并自动解除质押任务');
+
     try {
       const result =
         await this.blockchainService.getMachineInfoForDBCScanAndUnstake();
       this.logger.log(`扫描并解除质押结果: ${JSON.stringify(result)}`);
     } catch (error) {
       this.logger.error('扫描并自动解除质押任务失败', error.stack);
+    } finally {
+      this.isUnstaking = false;
     }
   }
 }

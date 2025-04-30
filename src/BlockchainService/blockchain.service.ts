@@ -40,9 +40,7 @@ export class BlockchainService {
     // 连接合约，使用 signer 进行交易
     // const contractAddress = '0x7FDC6ed8387f3184De77E0cF6D6f3B361F906C21';
 
-    const contractAddress = this.configService.get<string>(
-      env === 'production' ? 'CONTRACT_ADDRESS_PROD' : 'CONTRACT_ADDRESS_TEST',
-    );
+    const contractAddress = '0x3c059dbe0f42d65acd763c3c3da8b5a1b12bb74f';
 
     console.log(`环境: ${env}`);
     console.log(`RPC URL: ${rpcUrl}`);
@@ -251,86 +249,83 @@ export class BlockchainService {
       }
     }
   }
+
+  //根据钱包地址获取长租地址
+  async fetchGraphQLData2(add) {
+    const endpoint = 'https://dbcswap.io/subgraph/name/long-staking-state';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          query {
+            stateSummaries(first: 1) {
+              totalCalcPoint
+            }
+            stakeHolders(where: {
+              holder: "${add}"
+            }) {
+              holder
+              totalClaimedRewardAmount
+              totalReleasedRewardAmount
+              machineInfos(first: 1000) {
+               machineId
+               stakeEndTimestamp
+              }
+            }
+          }
+        `,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const res: any = await response.json();
+    if (res.data.stakeHolders.length !== 0) {
+      return res.data.stakeHolders[0].machineInfos;
+    } else {
+      return [];
+    }
+  }
   // 查询全部机器判断是否到期自动解除质押
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     try {
-      const result = await this.MachineModel.find(); // 获取所有机器信息
-      console.log(result, '获取所有机器信息遍历进行解除质押');
-      // 使用 Promise.all 等待所有异步操作完成
-      const stakeEndResults = await Promise.all(
-        result.map(async (machine) => {
-          console.log(machine.machineId);
-          const stakeEndTimestamp = await this.contract.getStakeEndTimestamp(
-            machine.machineId,
-          );
-          console.log(
-            `质押结束时间 for ${machine.machineId}: ${stakeEndTimestamp.toString()}`,
-          );
-          if (
-            Number(stakeEndTimestamp) === 0 ||
-            stakeEndTimestamp <= 0n ||
-            Number(stakeEndTimestamp) < Math.floor(Date.now() / 1000)
-          ) {
+      //根据钱包地址获取长租地址
+      const deleteResult = await this.MachineModel.find().exec();
+      console.log(deleteResult);
+      for (const item of deleteResult) {
+        console.log(item.address, '地址1');
+        const arr = await this.fetchGraphQLData2(item.address);
+
+        const newArr = arr
+          .filter(
+            (item) =>
+              Number(item.stakeEndTimestamp) < Math.floor(Date.now() / 1000),
+          )
+          .map((item) => ({ machineId: item.machineId }));
+        if (newArr.length !== 0) {
+          console.log(newArr, 'newArr');
+
+          for (const machine of newArr) {
             try {
               console.log(`尝试解除质押: ${machine.machineId}`);
               const tx = await this.contract.unStake(machine.machineId);
-              console.log(`解除质押交易已发送，交易哈希: ${tx.hash}`);
+              console.log(`发送成功: ${tx.hash}`);
               const receipt = await tx.wait();
-              console.log(
-                `交易确认，区块号: ${receipt.blockNumber}, 状态: ${receipt.status}`,
-              );
+              console.log(`已确认: ${receipt.blockNumber}`);
               if (receipt.status === 1) {
-                const deleteResult = await this.MachineModel.deleteOne({
-                  machineId: machine.machineId,
-                }).exec();
-                if (deleteResult.deletedCount === 0) {
-                  console.warn(
-                    `数据库中未找到 machineId 为 ${machine.machineId} 的机器`,
-                  );
-                  return {
-                    code: 1001,
-                    success: true,
-                    transactionHash: tx.hash,
-                    blockNumber: receipt.blockNumber,
-                    msg: '解除质押成功,但数据库中未找到机器',
-                  };
-                } else {
-                  console.log(
-                    `成功删除 machineId 为 ${machine.machineId} 的数据库记录`,
-                  );
-                  return {
-                    code: 1000,
-                    success: true,
-                    transactionHash: tx.hash,
-                    blockNumber: receipt.blockNumber,
-                    msg: '解除质押成功',
-                  };
-                }
+                console.log('解除质押成功');
               } else {
-                return { code: 1001, msg: '解除质押失败，交易状态非1' };
+                throw new Error('解除质押失败');
               }
-            } catch (error) {
-              console.error(
-                `解除质押交易失败 for ${machine.machineId}: ${error.message}`,
-              );
-              return { code: 1001, success: false, msg: error.message };
+            } catch (err) {
+              console.error(`失败: ${machine.machineId}`, err.message);
             }
-          } else {
-            return {
-              ended: false,
-              timestamp: stakeEndTimestamp.toString(),
-              code: 1001,
-              msg: '质押还未结束，不能解除质押',
-            };
           }
-        }),
-      );
-
-      return {
-        code: 200,
-        success: true,
-        data: stakeEndResults, // 返回所有机器的质押结束时间
-      };
+        }
+      }
     } catch (error) {
       return {
         code: 1001,
