@@ -13,17 +13,19 @@ export class MachineService {
 
   async create(createMachineDto): Promise<any> {
     try {
-      const existingMachine = await this.MachineModel.findOne({
-        machineId: createMachineDto.machineId,
-      });
-      if (existingMachine) {
-        return {
-          msg: 'Machine already exists',
-          code: 1001,
-        };
-      } else {
-        return await this.blockchainService.stake(createMachineDto);
-      }
+      return await this.blockchainService.stake(createMachineDto);
+
+      // const existingMachine = await this.MachineModel.findOne({
+      //   machineId: createMachineDto.machineId,
+      // });
+      // if (existingMachine) {
+      //   return {
+      //     msg: 'Machine already exists',
+      //     code: 1001,
+      //   };
+      // } else {
+      //   return await this.blockchainService.stake(createMachineDto);
+      // }
     } catch (error) {
       console.error('Create machine failed:', error);
       return {
