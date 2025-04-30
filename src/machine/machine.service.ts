@@ -36,7 +36,6 @@ export class MachineService {
   async findAll(address): Promise<any> {
     const machines: any = await this.MachineModel.find({ address });
     console.log(machines, '查询机器信息');
-    this.blockchainService.getMachineInfoForDBCScanAndUnstake();
     // 2. 遍历机器列表，调用合约更新数据
     const updatedMachines = await Promise.all(
       machines.map(async (machine) => {
