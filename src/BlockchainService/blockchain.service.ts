@@ -336,4 +336,43 @@ export class BlockchainService {
       };
     }
   }
+
+  // 续租
+  async renew(data: any) {
+    console.log(data);
+
+    try {
+      // 发送 续租 交易
+      const tx = await this.contract.addStakeHours(
+        data.holder,
+        data.machineIds,
+        data.additionHoursList,
+      );
+      console.log(`续租交易已发送，交易哈希: ${tx.hash}`);
+
+      // 等待交易确认
+      const receipt = await tx.wait();
+      // 检查交易状态
+      if (receipt.status === 1) {
+        return {
+          code: 1000,
+          success: true,
+          transactionHash: tx.hash,
+          blockNumber: receipt.blockNumber,
+          msg: '续租成功',
+        };
+      } else {
+        return {
+          msg: '续租失败',
+          code: 1001,
+        };
+      }
+    } catch (error) {
+      return {
+        code: 1001,
+        success: false,
+        msg: error.message,
+      };
+    }
+  }
 }

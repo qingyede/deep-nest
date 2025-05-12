@@ -164,4 +164,9 @@ export class MachineService {
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     return this.blockchainService.getMachineInfoForDBCScanAndUnstake();
   }
+
+  // 续租
+  async renew(createMachineDto): Promise<any> {
+    return this.blockchainService.renew(createMachineDto);
+  }
 }

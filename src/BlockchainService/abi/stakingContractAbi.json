@@ -235,6 +235,11 @@
   },
   {
     "inputs": [],
+    "name": "RewardNotEnough",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ShouldPaySlashBeforeStake",
     "type": "error"
   },
@@ -927,6 +932,29 @@
       }
     ],
     "name": "addRentedGPUCount",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "holder",
+        "type": "address"
+      },
+      {
+        "internalType": "string[]",
+        "name": "machineIds",
+        "type": "string[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "additionHoursList",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "addStakeHours",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -2565,6 +2593,11 @@
         "internalType": "uint256",
         "name": "rentId",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "rewardReceiver",
+        "type": "address"
       }
     ],
     "name": "stake1",
