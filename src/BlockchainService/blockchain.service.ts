@@ -252,79 +252,81 @@ export class BlockchainService {
     }
   }
 
-  //根据钱包地址获取长租地址
-  async fetchGraphQLData2(add) {
+  //  获取全部机器信息
+
+  async getAllMachineInfos() {
     const endpoint = 'https://dbcswap.io/subgraph/name/long-staking-state';
+
+    // 构建 where 字段的字符串，根据 gpuType 判断是否需要添加该字段
+    const whereClause = `
+      where: {
+        isStaking: true
+      }
+    `;
+
+    const query = `
+      query {
+        machineInfos(
+          first: 1000,
+          orderBy: totalCalcPoint,
+          orderDirection: desc,
+          ${whereClause}
+        ) {
+         machineId
+stakeEndTimestamp
+        }
+      }
+    `;
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        query: `
-          query {
-            stateSummaries(first: 1) {
-              totalCalcPoint
-            }
-            stakeHolders(where: {
-              holder: "${add}"
-            }) {
-              holder
-              totalClaimedRewardAmount
-              totalReleasedRewardAmount
-              machineInfos(first: 1000) {
-               machineId
-               stakeEndTimestamp
-              }
-            }
-          }
-        `,
-      }),
+      body: JSON.stringify({ query }),
     });
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const res: any = await response.json();
-    if (res.data.stakeHolders.length !== 0) {
-      return res.data.stakeHolders[0].machineInfos;
+    console.log(JSON.stringify(res.data.machineInfos), 'resres');
+    if (res.data.machineInfos.length !== 0) {
+      return res.data.machineInfos;
     } else {
       return [];
     }
   }
+
   // 查询全部机器判断是否到期自动解除质押
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     try {
-      //根据钱包地址获取长租地址
-      const deleteResult = await this.MachineModel.find().exec();
-      console.log(deleteResult);
-      for (const item of deleteResult) {
-        console.log(item.address, '地址1');
-        const arr = await this.fetchGraphQLData2(item.address);
+      const arr = await this.getAllMachineInfos();
+      console.log(arr.length);
+      const newArr = arr
+        .filter(
+          (item) =>
+            Number(item.stakeEndTimestamp) < Math.floor(Date.now() / 1000),
+        )
+        .map((item) => ({ machineId: item.machineId }));
+      console.log(newArr, '过滤后的机器列表');
+      if (newArr.length !== 0) {
+        console.log(newArr, 'newArr');
 
-        const newArr = arr
-          .filter(
-            (item) =>
-              Number(item.stakeEndTimestamp) < Math.floor(Date.now() / 1000),
-          )
-          .map((item) => ({ machineId: item.machineId }));
-        if (newArr.length !== 0) {
-          console.log(newArr, 'newArr');
-
-          for (const machine of newArr) {
-            try {
-              console.log(`尝试解除质押: ${machine.machineId}`);
-              const tx = await this.contract.unStake(machine.machineId);
-              console.log(`发送成功: ${tx.hash}`);
-              const receipt = await tx.wait();
-              console.log(`已确认: ${receipt.blockNumber}`);
-              if (receipt.status === 1) {
-                console.log('解除质押成功');
-              } else {
-                throw new Error('解除质押失败');
-              }
-            } catch (err) {
-              console.error(`失败: ${machine.machineId}`, err.message);
+        for (const machine of newArr) {
+          try {
+            console.log(`尝试解除质押: ${machine.machineId}`);
+            const tx = await this.contract.unStake(machine.machineId);
+            console.log(`发送成功: ${tx.hash}`);
+            const receipt = await tx.wait();
+            console.log(`已确认: ${receipt.blockNumber}`);
+            if (receipt.status === 1) {
+              console.log('解除质押成功');
+            } else {
+              throw new Error('解除质押失败');
             }
+          } catch (err) {
+            console.error(`失败: ${machine.machineId}`, err.message);
           }
         }
       }
