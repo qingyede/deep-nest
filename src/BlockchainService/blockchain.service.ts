@@ -305,11 +305,11 @@ stakeEndTimestamp
     const endpoint = 'https://dbcswap.io/subgraph/name/long-staking-state';
 
     // 构建 where 字段的字符串，根据 gpuType 判断是否需要添加该字段
-    const whereClause = `
-      where: {
-        isStaking: true
-      }
-    `;
+    // const whereClause = `
+    //   where: {
+    //     isStaking: true
+    //   }
+    // `;
 
     const query = `
       query {
@@ -317,7 +317,6 @@ stakeEndTimestamp
           first: 1000,
           orderBy: totalCalcPoint,
           orderDirection: desc,
-          ${whereClause}
         ) {
          machineId
 stakeEndTimestamp
@@ -346,35 +345,94 @@ holder
   }
 
   // 查询全部机器判断是否到期自动解除质押
+  // async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
+  //   try {
+  //     const arr = await this.getAllMachineInfos();
+  //     console.log(arr.length);
+  //     const newArr = arr
+  //       .filter(
+  //         (item) =>
+  //           Number(item.stakeEndTimestamp) < Math.floor(Date.now() / 1000),
+  //       )
+  //       .map((item) => ({ machineId: item.machineId }));
+  //     console.log(newArr, '过滤后的机器列表');
+  //     if (newArr.length !== 0) {
+  //       console.log(newArr, 'newArr');
+
+  //       for (const machine of newArr) {
+  //         try {
+  //           console.log(`尝试解除质押: ${machine.machineId}`);
+  //           const tx = await this.contract.unStake(machine.machineId);
+  //           console.log(`发送成功: ${tx.hash}`);
+  //           const receipt = await tx.wait();
+  //           console.log(`已确认: ${receipt.blockNumber}`);
+  //           if (receipt.status === 1) {
+  //             console.log('解除质押成功');
+  //           } else {
+  //             throw new Error('解除质押失败');
+  //           }
+  //         } catch (err) {
+  //           console.error(`失败: ${machine.machineId}`, err.message);
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     return {
+  //       code: 1001,
+  //       success: false,
+  //       msg: `获取机器信息失败: ${error.message}`,
+  //     };
+  //   }
+  // }
+  // 查询全部机器，判断是否到期，自动解除质押（带链上验证）
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     try {
-      const arr = await this.getAllMachineInfos();
-      console.log(arr.length);
-      const newArr = arr
-        .filter(
-          (item) =>
-            Number(item.stakeEndTimestamp) < Math.floor(Date.now() / 1000),
-        )
-        .map((item) => ({ machineId: item.machineId }));
-      console.log(newArr, '过滤后的机器列表');
-      if (newArr.length !== 0) {
-        console.log(newArr, 'newArr');
+      const arr = await this.getAllMachineInfos(); // 本地/子图拉取所有机器信息
+      console.log(`总机器数: ${arr.length}`);
 
-        for (const machine of newArr) {
+      const now = Math.floor(Date.now() / 1000); // 当前时间（秒）
+
+      for (const item of arr) {
+        const machineId = item.machineId;
+        const localEndTime = Number(item.stakeEndTimestamp);
+
+        // 初步判断：本地/子图显示机器已到期
+        if (localEndTime < now) {
+          let onChainEndTime: number;
+
           try {
-            console.log(`尝试解除质押: ${machine.machineId}`);
-            const tx = await this.contract.unStake(machine.machineId);
-            console.log(`发送成功: ${tx.hash}`);
-            const receipt = await tx.wait();
-            console.log(`已确认: ${receipt.blockNumber}`);
-            if (receipt.status === 1) {
-              console.log('解除质押成功');
-            } else {
-              throw new Error('解除质押失败');
-            }
+            // 调用链上函数确认真实的质押到期时间
+            onChainEndTime =
+              await this.contract.getStakeEndTimestamp(machineId);
           } catch (err) {
-            console.error(`失败: ${machine.machineId}`, err.message);
+            console.error(`查询链上质押时间失败: ${machineId}`, err.message);
+            continue; // 查询失败则跳过该机器
           }
+          console.log(onChainEndTime, now, '???????');
+          // 真正判断是否“确实到期”
+          if (onChainEndTime <= now) {
+            // 执行解除质押
+            try {
+              console.log(`机器 ${machineId} 确认到期，尝试解除质押`);
+              const tx = await this.contract.unStake(machineId);
+              console.log(`发送成功: ${tx.hash}`);
+              const receipt = await tx.wait();
+              console.log(`已确认: ${receipt.blockNumber}`);
+              if (receipt.status === 1) {
+                console.log(`机器 ${machineId} 解除质押成功`);
+              } else {
+                throw new Error('链上交易失败');
+              }
+            } catch (err) {
+              console.error(`解除质押失败: ${machineId}`, err.message);
+            }
+          } else {
+            console.log(`机器 ${machineId} 链上显示尚未到期，跳过`);
+            // 可选：同步本地数据库中的过期时间
+            // await this.updateLocalStakeEnd(machineId, onChainEndTime);
+          }
+        } else {
+          console.log(`机器 ${machineId} 本地显示尚未到期，跳过`);
         }
       }
     } catch (error) {
@@ -385,7 +443,6 @@ holder
       };
     }
   }
-
   // 续租
   async renew(data: any) {
     console.log(data);
