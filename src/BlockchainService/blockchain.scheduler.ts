@@ -15,35 +15,6 @@ export class BlockchainScheduler {
     @InjectModel(Machine.name) private readonly MachineModel: Model<Machine>,
   ) {}
 
-  // // 每 10 秒执行一次
-  // @Interval(100000) // 10000 毫秒 = 10 秒
-  // async handleUnstakeTask() {
-  //   this.logger.log('开始执行自动解除质押任务');
-
-  //   try {
-  //     // 查询数据库中所有机器
-  //     const machines = await this.MachineModel.find().exec();
-  //     this.logger.log(`找到 ${machines.length} 台机器`);
-
-  //     if (!machines.length) {
-  //       this.logger.log('数据库中没有机器记录，任务结束');
-  //       return;
-  //     }
-
-  //     // 遍历所有机器，仅调用 unstake
-  //     for (const machine of machines) {
-  //       const machineId = machine.machineId;
-  //       this.logger.log(`准备解除质押: ${machineId}`);
-
-  //       // 直接调用 unstake 方法
-  //       const result = await this.blockchainService.unstake(machineId);
-  //       this.logger.log(`解除质押结果: ${JSON.stringify(result)}`);
-  //     }
-  //   } catch (error) {
-  //     this.logger.error('自动解除质押任务失败', error.stack);
-  //   }
-  // }
-
   // 加在类里作为状态标志
   private isUnstaking = false;
 
@@ -64,6 +35,29 @@ export class BlockchainScheduler {
       this.logger.error('扫描并自动解除质押任务失败', error.stack);
     } finally {
       this.isUnstaking = false;
+    }
+  }
+
+  // 状态标志：锁定奖励同步任务
+  private isSyncingLockedReward = false;
+  // 每 10 分钟同步锁定奖励
+  @Interval(6000)
+  async handleSyncLockedRewardTask() {
+    if (this.isSyncingLockedReward) {
+      this.logger.warn('锁定奖励同步仍在执行中，跳过本轮');
+      return;
+    }
+
+    this.isSyncingLockedReward = true;
+    this.logger.log('开始执行锁定奖励同步任务');
+
+    try {
+      await this.blockchainService.syncLockedRewardToDatabase();
+      this.logger.log('锁定奖励同步任务完成');
+    } catch (error) {
+      this.logger.error('锁定奖励同步任务失败', error.stack);
+    } finally {
+      this.isSyncingLockedReward = false;
     }
   }
 }

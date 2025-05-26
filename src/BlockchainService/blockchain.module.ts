@@ -5,10 +5,17 @@ import { BlockchainService } from './blockchain.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Machine, MachineSchema } from '../machine/machine.schema';
 import { BlockchainScheduler } from './blockchain.scheduler';
+import {
+  WalletReward,
+  WalletRewardSchema,
+} from '../machine/wallet-reward.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Machine.name, schema: MachineSchema }]),
+    MongooseModule.forFeature([
+      { name: Machine.name, schema: MachineSchema },
+      { name: WalletReward.name, schema: WalletRewardSchema },
+    ]),
     ConfigModule, // 添加 ConfigModule
   ],
   providers: [BlockchainService, BlockchainScheduler],

@@ -45,7 +45,11 @@ export class MachineController {
     console.log(machineId);
     return this.machineService.unStake(machineId);
   }
-
+  // 查询所有钱包奖励
+  @Get('getAllWalletRewards')
+  async getAllWalletRewards() {
+    return await this.machineService.getAllWalletRewards();
+  }
   // 带宽之前的注册
   @Post('contractRegister')
   siginHandle() {

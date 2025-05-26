@@ -169,4 +169,9 @@ export class MachineService {
   async renew(createMachineDto): Promise<any> {
     return this.blockchainService.renew(createMachineDto);
   }
+
+  // 获取奖励数据
+  async getAllWalletRewards() {
+    return this.blockchainService.getAllWalletRewards();
+  }
 }

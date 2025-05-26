@@ -1,12 +1,13 @@
 // src/blockchain/blockchain.service.ts
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ethers } from 'ethers';
 import * as stakingContractAbi from './abi/stakingContractAbi.json'; // 加载 ABI
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Machine } from '../machine/machine.schema';
 // import axios, { AxiosResponse } from 'axios';
+import { ethers } from 'ethers';
+import { WalletReward } from '../machine/wallet-reward.schema';
 
 @Injectable()
 export class BlockchainService {
@@ -17,6 +18,8 @@ export class BlockchainService {
   constructor(
     private configService: ConfigService,
     @InjectModel(Machine.name) private MachineModel: Model<Machine>,
+    @InjectModel(WalletReward.name)
+    private WalletRewardModel: Model<WalletReward>,
   ) {
     // const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
     const env = this.configService.get<string>('NODE_ENV', 'test');
@@ -298,6 +301,50 @@ stakeEndTimestamp
     }
   }
 
+  async getAllMachineInfos2() {
+    const endpoint = 'https://dbcswap.io/subgraph/name/long-staking-state';
+
+    // 构建 where 字段的字符串，根据 gpuType 判断是否需要添加该字段
+    const whereClause = `
+      where: {
+        isStaking: true
+      }
+    `;
+
+    const query = `
+      query {
+        machineInfos(
+          first: 1000,
+          orderBy: totalCalcPoint,
+          orderDirection: desc,
+          ${whereClause}
+        ) {
+         machineId
+stakeEndTimestamp
+holder
+        }
+      }
+    `;
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const res: any = await response.json();
+    if (res.data.machineInfos.length !== 0) {
+      return res.data.machineInfos;
+    } else {
+      return [];
+    }
+  }
+
   // 查询全部机器判断是否到期自动解除质押
   async getMachineInfoForDBCScanAndUnstake(): Promise<any> {
     try {
@@ -376,5 +423,81 @@ stakeEndTimestamp
         msg: error.message,
       };
     }
+  }
+
+  // 生成奖励数
+
+  async syncLockedRewardToDatabase() {
+    const machines = await this.getAllMachineInfos2(); // 获取 machineId + holder
+
+    const walletRewardMap: Map<string, number> = new Map();
+
+    for (const machine of machines) {
+      try {
+        const machineId = machine.machineId;
+        const wallet = machine.holder.toLowerCase(); // 钱包地址
+
+        // 查询合约：machineId2LockedRewardDetail
+        const detail =
+          await this.contract.machineId2LockedRewardDetail(machineId);
+
+        // 使用 formatUnits 转为正常的数值（18 位精度）
+        const totalAmount = Number(ethers.formatUnits(detail.totalAmount, 18));
+        const claimedAmount = Number(
+          ethers.formatUnits(detail.claimedAmount, 18),
+        );
+        const lockedReward = totalAmount - claimedAmount;
+
+        // 累加到对应钱包
+        const currentTotal = walletRewardMap.get(wallet) || 0;
+        walletRewardMap.set(wallet, currentTotal + lockedReward);
+
+        // 打印每台机器的奖励数据
+        console.log(`machineId: ${machineId}, wallet: ${wallet}`);
+        console.log(`  totalAmount: ${totalAmount}`);
+        console.log(`  claimedAmount: ${claimedAmount}`);
+        console.log(`  lockedReward: ${lockedReward}`);
+      } catch (err) {
+        console.error(`处理失败 machineId: ${machine.machineId}`, err.message);
+      }
+    }
+
+    // 写入数据库
+    for (const [wallet, lockedReward] of walletRewardMap.entries()) {
+      console.log(`钱包: ${wallet}, 累计锁定奖励: ${lockedReward}`);
+
+      await this.WalletRewardModel.updateOne(
+        { walletAddress: wallet },
+        {
+          $set: {
+            walletAddress: wallet,
+            lockedReward: lockedReward.toString(), // 存字符串防止浮点精度问题
+            updatedAt: new Date(),
+          },
+        },
+        { upsert: true },
+      );
+    }
+
+    console.log('锁定奖励同步任务完成');
+  }
+  // 获取奖励数据
+
+  async getAllWalletRewards() {
+    const result = await this.WalletRewardModel.find()
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    if (result.length === 0) {
+      return {
+        code: 10001,
+        data: [],
+      };
+    }
+
+    return {
+      code: 200,
+      data: result,
+    };
   }
 }
