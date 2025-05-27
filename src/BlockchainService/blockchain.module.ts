@@ -9,12 +9,18 @@ import {
   WalletReward,
   WalletRewardSchema,
 } from '../machine/wallet-reward.schema';
+import {
+  WalletRewardShort,
+  WalletRewardShortSchema,
+} from '../machine/wallet-reward-short.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Machine.name, schema: MachineSchema },
       { name: WalletReward.name, schema: WalletRewardSchema },
+      // 新增短租模型
+      { name: WalletRewardShort.name, schema: WalletRewardShortSchema },
     ]),
     ConfigModule, // 添加 ConfigModule
   ],

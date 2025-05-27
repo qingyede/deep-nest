@@ -2,12 +2,15 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as stakingContractAbi from './abi/stakingContractAbi.json'; // 加载 ABI
+import * as stakingShort from './abi/stake-short-abi.json'; // 加载 ABI
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Machine } from '../machine/machine.schema';
-// import axios, { AxiosResponse } from 'axios';
 import { ethers } from 'ethers';
 import { WalletReward } from '../machine/wallet-reward.schema';
+import { WalletRewardShort } from '../machine/wallet-reward-short.schema';
+
+import * as dayjs from 'dayjs';
 
 @Injectable()
 export class BlockchainService {
@@ -18,10 +21,13 @@ export class BlockchainService {
   constructor(
     private configService: ConfigService,
     @InjectModel(Machine.name) private MachineModel: Model<Machine>,
+
+    @InjectModel(WalletRewardShort.name)
+    private WalletRewardShortModel: Model<WalletRewardShort>,
+
     @InjectModel(WalletReward.name)
     private WalletRewardModel: Model<WalletReward>,
   ) {
-    // const rpcUrl = 'https://rpc-testnet.dbcwallet.io';
     const env = this.configService.get<string>('NODE_ENV', 'test');
 
     const rpcUrl = this.configService.get<string>(
@@ -301,8 +307,53 @@ stakeEndTimestamp
     }
   }
 
+  // 获取全部长租的机器
   async getAllMachineInfos2() {
     const endpoint = 'https://dbcswap.io/subgraph/name/long-staking-state';
+
+    // 构建 where 字段的字符串，根据 gpuType 判断是否需要添加该字段
+    // const whereClause = `
+    //   where: {
+    //     isStaking: true
+    //   }
+    // `;
+
+    const query = `
+      query {
+        machineInfos(
+          first: 1000,
+          orderBy: totalCalcPoint,
+          orderDirection: desc,
+        ) {
+         machineId
+stakeEndTimestamp
+holder
+        }
+      }
+    `;
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const res: any = await response.json();
+    if (res.data.machineInfos.length !== 0) {
+      return res.data.machineInfos;
+    } else {
+      return [];
+    }
+  }
+
+  // 获取全部短租的机器
+  async getAllMachineInfos3() {
+    const endpoint = 'https://dbcswap.io/subgraph/name/short-staking-state';
 
     // 构建 where 字段的字符串，根据 gpuType 判断是否需要添加该字段
     // const whereClause = `
@@ -444,21 +495,98 @@ holder
     }
   }
   // 续租
+  // async renew(data: any) {
+  //   console.log(data);
+  //   const a = await this.contract.getStakeEndTimestamp(
+  //     '2866e473d26166dff9f08e878c86978a7b9598f18712e2680d2f7b6c7613ed48',
+  //   );
+  //   console.log(a, '时间');
+  //   // try {
+  //   //   // 发送 续租 交易
+  //   //   const tx = await this.contract.addStakeHours(
+  //   //     data.holder,
+  //   //     data.machineIds,
+  //   //     data.additionHoursList,
+  //   //   );
+  //   //   console.log(`续租交易已发送，交易哈希: ${tx.hash}`);
+
+  //   //   // 等待交易确认
+  //   //   const receipt = await tx.wait();
+  //   //   // 检查交易状态
+  //   //   if (receipt.status === 1) {
+  //   //     return {
+  //   //       code: 1000,
+  //   //       success: true,
+  //   //       transactionHash: tx.hash,
+  //   //       blockNumber: receipt.blockNumber,
+  //   //       msg: '续租成功',
+  //   //     };
+  //   //   } else {
+  //   //     return {
+  //   //       msg: '续租失败',
+  //   //       code: 1001,
+  //   //     };
+  //   //   }
+  //   // } catch (error) {
+  //   //   return {
+  //   //     code: 1001,
+  //   //     success: false,
+  //   //     msg: error.message,
+  //   //   };
+  //   // }
+  // }
+
   async renew(data: any) {
-    console.log(data);
+    const validMachineIds: string[] = [];
+    const additionHoursList: number[] = [];
+
+    // 并发获取每台机器的链上时间戳
+    for (const machine of data.machineIds) {
+      const { machineId, stakeEndTime } = machine;
+      console.log(machineId, stakeEndTime, 'machineId, stakeEndTime');
+      try {
+        // 获取链上到期时间（单位为秒）
+        const onChainTimestamp =
+          await this.contract.getStakeEndTimestamp(machineId);
+        const onChainTime = Number(onChainTimestamp); // BigInt 转 number
+        console.log(onChainTime, '链上');
+
+        // 前端传来的时间（ISO 字符串），转成时间戳（秒）
+        const frontEndTime = dayjs(stakeEndTime).unix();
+        console.log(frontEndTime, '链下');
+
+        const timeDiff = onChainTime - frontEndTime;
+        console.log(timeDiff);
+
+        if (timeDiff > 0) {
+          // 说明链上已经续租，记录
+          validMachineIds.push(machineId);
+          additionHoursList.push(Math.floor(timeDiff / 3600)); // 秒转小时，向下取整
+        }
+      } catch (error) {
+        console.error(`获取机器 ${machineId} 的链上时间失败:`, error);
+      }
+    }
+
+    if (validMachineIds.length === 0) {
+      return {
+        code: 1001,
+        success: false,
+        msg: '没有检测到任何符合续租的机器',
+      };
+    }
 
     try {
-      // 发送 续租 交易
+      // 调用合约续租
       const tx = await this.contract.addStakeHours(
         data.holder,
-        data.machineIds,
-        data.additionHoursList,
+        validMachineIds,
+        additionHoursList,
       );
       console.log(`续租交易已发送，交易哈希: ${tx.hash}`);
 
-      // 等待交易确认
       const receipt = await tx.wait();
-      // 检查交易状态
+
       if (receipt.status === 1) {
         return {
           code: 1000,
@@ -469,8 +597,9 @@ holder
         };
       } else {
         return {
-          msg: '续租失败',
           code: 1001,
+          success: false,
+          msg: '续租失败',
         };
       }
     } catch (error) {
@@ -481,9 +610,7 @@ holder
       };
     }
   }
-
-  // 生成奖励数
-
+  // 生成奖励数-长租
   async syncLockedRewardToDatabase() {
     const machines = await this.getAllMachineInfos2(); // 获取 machineId + holder
 
@@ -538,10 +665,95 @@ holder
 
     console.log('锁定奖励同步任务完成');
   }
-  // 获取奖励数据
-
+  // 获取奖励数据-长租
   async getAllWalletRewards() {
     const result = await this.WalletRewardModel.find()
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    if (result.length === 0) {
+      return {
+        code: 10001,
+        data: [],
+      };
+    }
+
+    return {
+      code: 200,
+      data: result,
+    };
+  }
+
+  // 生成奖励数-短租
+
+  async syncLockedRewardToDatabaseShort() {
+    const machines = await this.getAllMachineInfos3(); // 获取 machineId + holder
+    console.log(`获取到 ${machines.length} 台短租机器`);
+
+    const walletRewardMap: Map<string, number> = new Map();
+
+    // 初始化 provider
+    const env = this.configService.get<string>('NODE_ENV', 'test');
+    const rpcUrl = this.configService.get<string>(
+      env === 'production' ? 'RPC_URL_PROD' : 'RPC_URL_TEST',
+    );
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+    // 初始化短租合约
+    const shortContractAddress = '0x6268Aba94D0d0e4FB917cC02765f631f309a7388';
+    const contract = new ethers.Contract(
+      shortContractAddress,
+      stakingShort,
+      provider,
+    );
+
+    for (const machine of machines) {
+      try {
+        const machineId = machine.machineId;
+        const wallet = machine.holder.toLowerCase();
+
+        const detail = await contract.machineId2LockedRewardDetail(machineId);
+
+        const totalAmount = Number(ethers.formatUnits(detail.totalAmount, 18));
+        const claimedAmount = Number(
+          ethers.formatUnits(detail.claimedAmount, 18),
+        );
+        const lockedReward = totalAmount - claimedAmount;
+
+        const currentTotal = walletRewardMap.get(wallet) || 0;
+        walletRewardMap.set(wallet, currentTotal + lockedReward);
+
+        console.log(`machineId: ${machineId}, wallet: ${wallet}`);
+        console.log(`  totalAmount: ${totalAmount}`);
+        console.log(`  claimedAmount: ${claimedAmount}`);
+        console.log(`  lockedReward: ${lockedReward}`);
+      } catch (err) {
+        console.error(`处理失败 machineId: ${machine.machineId}`, err.message);
+      }
+    }
+
+    // 写入数据库，更新字段为 lockedRewardShort
+    for (const [wallet, lockedRewardShort] of walletRewardMap.entries()) {
+      console.log(`更新钱包 ${wallet} 的短租锁定奖励为: ${lockedRewardShort}`);
+
+      await this.WalletRewardShortModel.updateOne(
+        { walletAddress: wallet },
+        {
+          $set: {
+            walletAddress: wallet,
+            lockedReward: lockedRewardShort.toString(),
+            updatedAt: new Date(),
+          },
+        },
+        { upsert: true },
+      );
+    }
+
+    console.log('短租锁定奖励同步任务完成');
+  }
+  // 获取奖励数据-短租
+  async getAllWalletRewardsShort() {
+    const result = await this.WalletRewardShortModel.find()
       .sort({ updatedAt: -1 })
       .lean();
 

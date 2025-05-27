@@ -45,10 +45,15 @@ export class MachineController {
     console.log(machineId);
     return this.machineService.unStake(machineId);
   }
-  // 查询所有钱包奖励
+  // 查询所有钱包奖励-长租
   @Get('getAllWalletRewards')
   async getAllWalletRewards() {
     return await this.machineService.getAllWalletRewards();
+  }
+  // 查询所有钱包奖励-长租
+  @Get('getAllWalletRewardsShort')
+  async getAllWalletRewardsShort() {
+    return await this.machineService.getAllWalletRewardsShort();
   }
   // 带宽之前的注册
   @Post('contractRegister')

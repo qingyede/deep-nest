@@ -174,4 +174,9 @@ export class MachineService {
   async getAllWalletRewards() {
     return this.blockchainService.getAllWalletRewards();
   }
+
+  // 获取奖励数据
+  async getAllWalletRewardsShort() {
+    return this.blockchainService.getAllWalletRewardsShort();
+  }
 }

@@ -38,7 +38,7 @@ export class BlockchainScheduler {
     }
   }
 
-  // 状态标志：锁定奖励同步任务
+  // 状态标志：锁定奖励同步任务--长租
   private isSyncingLockedReward = false;
   // 每 10 分钟同步锁定奖励
   @Interval(6000)
@@ -47,10 +47,8 @@ export class BlockchainScheduler {
       this.logger.warn('锁定奖励同步仍在执行中，跳过本轮');
       return;
     }
-
     this.isSyncingLockedReward = true;
     this.logger.log('开始执行锁定奖励同步任务');
-
     try {
       await this.blockchainService.syncLockedRewardToDatabase();
       this.logger.log('锁定奖励同步任务完成');
@@ -58,6 +56,27 @@ export class BlockchainScheduler {
       this.logger.error('锁定奖励同步任务失败', error.stack);
     } finally {
       this.isSyncingLockedReward = false;
+    }
+  }
+
+  // 状态标志：锁定奖励同步任务--短租
+  private isSyncingLockedReward2 = false;
+  // 每 10 分钟同步锁定奖励
+  @Interval(6000)
+  async handleSyncLockedRewardTask2() {
+    if (this.isSyncingLockedReward2) {
+      this.logger.warn('锁定奖励同步仍在执行中，跳过本轮');
+      return;
+    }
+    this.isSyncingLockedReward2 = true;
+    this.logger.log('开始执行锁定奖励同步任务');
+    try {
+      await this.blockchainService.syncLockedRewardToDatabaseShort();
+      this.logger.log('锁定奖励同步任务完成');
+    } catch (error) {
+      this.logger.error('锁定奖励同步任务失败', error.stack);
+    } finally {
+      this.isSyncingLockedReward2 = false;
     }
   }
 }
